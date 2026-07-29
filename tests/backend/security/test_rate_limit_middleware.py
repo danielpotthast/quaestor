@@ -34,6 +34,25 @@ def test_non_strict_endpoint_uses_looser_global_limit(http_client: TestClient, m
         assert http_client.get("/api/auth/me").status_code in (200, 401)
 
 
+def test_non_strict_endpoint_returns_429_when_global_limit_exhausted(
+    http_client: TestClient, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    monkeypatch.setattr(target=rate_limit, name="GLOBAL_CAPACITY", value=2)
+    monkeypatch.setattr(target=rate_limit, name="GLOBAL_REFILL_PER_SECOND", value=0.001)
+    monkeypatch.setattr(target=rate_limit, name="STRICT_CAPACITY", value=100)
+
+    first = http_client.get("/api/auth/me")
+    second = http_client.get("/api/auth/me")
+    third = http_client.get("/api/auth/me")
+
+    assert first.status_code != 429
+    assert second.status_code != 429
+    assert third.status_code == 429
+    assert third.json() == {"detail": "Too many requests"}
+    assert int(third.headers["retry-after"]) >= 1
+    assert_log_contains(caplog, message="Rate limit exceeded")
+
+
 def test_strict_and_global_buckets_are_independent(http_client_logged_out: TestClient, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(target=rate_limit, name="STRICT_CAPACITY", value=1)
     monkeypatch.setattr(target=rate_limit, name="STRICT_REFILL_PER_SECOND", value=0.001)

@@ -393,6 +393,39 @@ def test_get_sync_job_returns_404_for_other_users_credential(http_client: TestCl
     assert http_client.get(f"/api/credentials/{credential_id}/sync/{job_id}").status_code == 404
 
 
+def test_cancel_sync_job_returns_204(http_client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    register(http_client)
+    credential_id = create_credential(http_client).json()["id"]
+    monkeypatch.setattr(
+        target=credential_service, name="sync_credential", value=lambda **_: SyncResult(status=SyncStatus.COMPLETED)
+    )
+    job_id = http_client.post(f"/api/credentials/{credential_id}/sync").json()["job_id"]
+
+    assert http_client.delete(f"/api/credentials/{credential_id}/sync/{job_id}").status_code == 204
+
+
+def test_cancel_unknown_sync_job_returns_404(http_client: TestClient):
+    register(http_client)
+    credential_id = create_credential(http_client).json()["id"]
+
+    assert http_client.delete(f"/api/credentials/{credential_id}/sync/nonexistent").status_code == 404
+
+
+def test_cancel_sync_job_returns_404_for_other_users_credential(
+    http_client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    register(http_client, user_name="owner")
+    credential_id = create_credential(http_client).json()["id"]
+    monkeypatch.setattr(
+        target=credential_service, name="sync_credential", value=lambda **_: SyncResult(status=SyncStatus.COMPLETED)
+    )
+    job_id = http_client.post(f"/api/credentials/{credential_id}/sync").json()["job_id"]
+
+    register_and_login(http_client, user_name="intruder")
+
+    assert http_client.delete(f"/api/credentials/{credential_id}/sync/{job_id}").status_code == 404
+
+
 def test_sync_job_websocket_streams_terminal_state(http_client: TestClient, monkeypatch: pytest.MonkeyPatch):
     register(http_client)
     credential_id = create_credential(http_client).json()["id"]
