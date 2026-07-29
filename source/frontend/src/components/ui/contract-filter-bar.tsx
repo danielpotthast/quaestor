@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
-import { Archive, ChevronRight, CircleCheck, Repeat, TriangleAlert } from 'lucide-react'
+import { Archive, CircleCheck, Repeat, TriangleAlert } from 'lucide-react'
 
 import type { CredentialRead } from '@/lib/auth'
 import {
@@ -15,6 +15,7 @@ import {
 } from '@/lib/contract'
 import { FILTERABLE_CATEGORIES } from '@/lib/statistics'
 import { AccountMultiSelect } from '@/components/ui/account-multi-select'
+import { AdvancedFilters } from '@/components/ui/advanced-filters'
 import { AmountRangeFields } from '@/components/ui/amount-range-fields'
 import { CategoryMultiSelect } from '@/components/ui/category-multi-select'
 import { FrequencyMultiSelect } from '@/components/ui/frequency-multi-select'
@@ -99,83 +100,74 @@ function ContractFilterBar({ credentials, filters, onChange }: ContractFilterBar
         onToChange={(value) => update('amount_to', value)}
       />
 
-      <details className="group border-border border-t pt-3">
-        <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none select-none items-center gap-1 text-sm font-medium">
-          <ChevronRight
-            className="size-4 transition-transform group-open:rotate-90"
-            aria-hidden="true"
-          />
-          {t('search.advancedFilters')}
-        </summary>
-        <div className="flex flex-col gap-3 pt-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="contract-filter-accounts">{t('common.account')}</Label>
-              <AccountMultiSelect
-                id="contract-filter-accounts"
-                credentials={credentials}
-                selectedIds={shownOrAll(filters.account_ids, accountIds)}
-                onChange={(next) => update('account_ids', normalize(next, accountIds.length))}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="contract-filter-categories">{t('common.categories')}</Label>
-              <CategoryMultiSelect
-                id="contract-filter-categories"
-                selectedIds={shownOrAll(filters.categories, FILTERABLE_CATEGORIES)}
-                onChange={(next) =>
-                  update('categories', normalize(next, FILTERABLE_CATEGORIES.length))
-                }
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="contract-filter-frequencies">{t('filters.frequenciesLabel')}</Label>
-              <FrequencyMultiSelect
-                id="contract-filter-frequencies"
-                selectedIds={shownOrAll(filters.frequencies, CONTRACT_FREQUENCY_FILTERS)}
-                onChange={(next) =>
-                  update('frequencies', normalize(next, CONTRACT_FREQUENCY_FILTERS.length))
-                }
-              />
-            </div>
+      <AdvancedFilters storageKey="contracts">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="contract-filter-accounts">{t('common.account')}</Label>
+            <AccountMultiSelect
+              id="contract-filter-accounts"
+              credentials={credentials}
+              selectedIds={shownOrAll(filters.account_ids, accountIds)}
+              onChange={(next) => update('account_ids', normalize(next, accountIds.length))}
+            />
           </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="contract-filter-overdue">{t('common.overdue')}</Label>
-              <MultiSelectPopover
-                id="contract-filter-overdue"
-                ariaLabel={t('common.overdue')}
-                checkboxIdPrefix="contract-overdue"
-                selected={filters.overdue ?? [...CONTRACT_OVERDUE_FILTERS]}
-                onChange={(next) =>
-                  update('overdue', normalize(next, CONTRACT_OVERDUE_FILTERS.length))
-                }
-                triggerLabel={twoOptionLabel(
-                  filters.overdue ?? [...CONTRACT_OVERDUE_FILTERS],
-                  overdueOptions,
-                )}
-                options={overdueOptions}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="contract-filter-status">{t('contracts.statusLabel')}</Label>
-              <MultiSelectPopover
-                id="contract-filter-status"
-                ariaLabel={t('contracts.statusLabel')}
-                checkboxIdPrefix="contract-status"
-                selected={filters.status ?? DEFAULT_CONTRACT_STATUS}
-                onChange={(next) => update('status', statusEqualsDefault(next) ? undefined : next)}
-                triggerLabel={twoOptionLabel(
-                  filters.status ?? DEFAULT_CONTRACT_STATUS,
-                  statusOptions,
-                )}
-                options={statusOptions}
-              />
-            </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="contract-filter-categories">{t('common.categories')}</Label>
+            <CategoryMultiSelect
+              id="contract-filter-categories"
+              selectedIds={shownOrAll(filters.categories, FILTERABLE_CATEGORIES)}
+              onChange={(next) =>
+                update('categories', normalize(next, FILTERABLE_CATEGORIES.length))
+              }
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="contract-filter-frequencies">{t('filters.frequenciesLabel')}</Label>
+            <FrequencyMultiSelect
+              id="contract-filter-frequencies"
+              selectedIds={shownOrAll(filters.frequencies, CONTRACT_FREQUENCY_FILTERS)}
+              onChange={(next) =>
+                update('frequencies', normalize(next, CONTRACT_FREQUENCY_FILTERS.length))
+              }
+            />
           </div>
         </div>
-      </details>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="contract-filter-overdue">{t('common.overdue')}</Label>
+            <MultiSelectPopover
+              id="contract-filter-overdue"
+              ariaLabel={t('common.overdue')}
+              checkboxIdPrefix="contract-overdue"
+              selected={filters.overdue ?? [...CONTRACT_OVERDUE_FILTERS]}
+              onChange={(next) =>
+                update('overdue', normalize(next, CONTRACT_OVERDUE_FILTERS.length))
+              }
+              triggerLabel={twoOptionLabel(
+                filters.overdue ?? [...CONTRACT_OVERDUE_FILTERS],
+                overdueOptions,
+              )}
+              options={overdueOptions}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="contract-filter-status">{t('contracts.statusLabel')}</Label>
+            <MultiSelectPopover
+              id="contract-filter-status"
+              ariaLabel={t('contracts.statusLabel')}
+              checkboxIdPrefix="contract-status"
+              selected={filters.status ?? DEFAULT_CONTRACT_STATUS}
+              onChange={(next) => update('status', statusEqualsDefault(next) ? undefined : next)}
+              triggerLabel={twoOptionLabel(
+                filters.status ?? DEFAULT_CONTRACT_STATUS,
+                statusOptions,
+              )}
+              options={statusOptions}
+            />
+          </div>
+        </div>
+      </AdvancedFilters>
     </section>
   )
 }

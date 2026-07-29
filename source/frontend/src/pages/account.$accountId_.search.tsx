@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useCanGoBack, useRouter } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeftRight, ChevronRight } from 'lucide-react'
+import { ArrowLeftRight } from 'lucide-react'
 
 import { AccountMultiSelect } from '@/components/ui/account-multi-select'
+import { AdvancedFilters } from '@/components/ui/advanced-filters'
 import { AmountRangeFields } from '@/components/ui/amount-range-fields'
 import { DateRangeFields } from '@/components/ui/date-range-fields'
 import { FilterHeading } from '@/components/ui/filter-heading'
@@ -173,56 +174,44 @@ function SearchForm({
         onToChange={(value) => onUpdate('amount_to', value)}
       />
 
-      <details className="group border-border border-t pt-3">
-        <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none select-none items-center gap-1 text-sm font-medium">
-          <ChevronRight
-            className="size-4 transition-transform group-open:rotate-90"
-            aria-hidden="true"
+      <AdvancedFilters storageKey="search">
+        <Field id="search-accounts" label={t('common.accounts')}>
+          <AccountMultiSelect
+            id="search-accounts"
+            credentials={credentials}
+            selectedIds={accountIds}
+            onChange={onAccountIdsChange}
           />
-          {t('search.advancedFilters')}
-        </summary>
-        <div className="flex flex-col gap-3 pt-3">
-          <Field id="search-accounts" label={t('common.accounts')}>
-            <AccountMultiSelect
-              id="search-accounts"
-              credentials={credentials}
-              selectedIds={accountIds}
-              onChange={onAccountIdsChange}
-            />
-          </Field>
+        </Field>
 
-          <DateRangeFields
-            idPrefix="search"
-            placeholder={t('search.datePlaceholder')}
-            dateFrom={draft.date_from}
-            dateTo={draft.date_to}
-            onDateFromChange={(next) => onUpdate('date_from', next)}
-            onDateToChange={(next) => onUpdate('date_to', next)}
-          />
+        <DateRangeFields
+          idPrefix="search"
+          placeholder={t('search.datePlaceholder')}
+          dateFrom={draft.date_from}
+          dateTo={draft.date_to}
+          onDateFromChange={(next) => onUpdate('date_from', next)}
+          onDateToChange={(next) => onUpdate('date_to', next)}
+        />
 
-          <TransactionFilterFields
-            idPrefix="search"
-            selectedCategories={selectedCategories}
-            onCategoriesChange={(next) =>
-              onUpdate(
-                'categories',
-                next.length === TRANSACTION_CATEGORIES.length ? undefined : next,
-              )
-            }
-            selectedTypes={selectedTypes}
-            onTypesChange={(next) =>
-              onUpdate(
-                'transaction_types',
-                next.length === TRANSACTION_TYPES.length ? undefined : next,
-              )
-            }
-            transfer={draft.linked}
-            onTransferChange={(next) => onUpdate('linked', next)}
-            attachment={draft.has_attachment}
-            onAttachmentChange={(next) => onUpdate('has_attachment', next)}
-          />
-        </div>
-      </details>
+        <TransactionFilterFields
+          idPrefix="search"
+          selectedCategories={selectedCategories}
+          onCategoriesChange={(next) =>
+            onUpdate('categories', next.length === TRANSACTION_CATEGORIES.length ? undefined : next)
+          }
+          selectedTypes={selectedTypes}
+          onTypesChange={(next) =>
+            onUpdate(
+              'transaction_types',
+              next.length === TRANSACTION_TYPES.length ? undefined : next,
+            )
+          }
+          transfer={draft.linked}
+          onTransferChange={(next) => onUpdate('linked', next)}
+          attachment={draft.has_attachment}
+          onAttachmentChange={(next) => onUpdate('has_attachment', next)}
+        />
+      </AdvancedFilters>
     </form>
   )
 }

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { AccountMultiSelect } from '@/components/ui/account-multi-select'
+import { AdvancedFilters } from '@/components/ui/advanced-filters'
 import { FilterHeading } from '@/components/ui/filter-heading'
 import { DateRangeFields } from '@/components/ui/date-range-fields'
 import { Label } from '@/components/ui/label'
@@ -218,22 +219,6 @@ export function StatsView({
 
       <section className="border-border bg-card flex flex-col gap-3 rounded-lg border p-3">
         <FilterHeading onReset={filtersActive ? resetFilters : undefined} />
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="stats-accounts">{t('common.accounts')}</Label>
-          <AccountMultiSelect
-            id="stats-accounts"
-            credentials={credentials}
-            selectedIds={accountIds}
-            onChange={updateAccounts}
-          />
-        </div>
-        <DateRangeFields
-          idPrefix="stats"
-          dateFrom={filters.date_from}
-          dateTo={filters.date_to}
-          onDateFromChange={(next) => updateFilter('date_from', next)}
-          onDateToChange={(next) => updateFilter('date_to', next)}
-        />
         <SegmentedToggle
           fullWidth
           ariaLabel={t('stats.rangeLabel')}
@@ -254,15 +239,34 @@ export function StatsView({
             { value: 'INCOMING', label: t('common.income') },
           ]}
         />
-        <TransactionFilterFields
-          idPrefix="stats"
-          selectedCategories={selectedCategories}
-          onCategoriesChange={updateCategories}
-          selectedTypes={selectedTypes}
-          onTypesChange={updateTypes}
-          transfer={linked}
-          onTransferChange={updateLinked}
-        />
+
+        <AdvancedFilters storageKey="stats">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="stats-accounts">{t('common.accounts')}</Label>
+            <AccountMultiSelect
+              id="stats-accounts"
+              credentials={credentials}
+              selectedIds={accountIds}
+              onChange={updateAccounts}
+            />
+          </div>
+          <DateRangeFields
+            idPrefix="stats"
+            dateFrom={filters.date_from}
+            dateTo={filters.date_to}
+            onDateFromChange={(next) => updateFilter('date_from', next)}
+            onDateToChange={(next) => updateFilter('date_to', next)}
+          />
+          <TransactionFilterFields
+            idPrefix="stats"
+            selectedCategories={selectedCategories}
+            onCategoriesChange={updateCategories}
+            selectedTypes={selectedTypes}
+            onTypesChange={updateTypes}
+            transfer={linked}
+            onTransferChange={updateLinked}
+          />
+        </AdvancedFilters>
       </section>
 
       {!hasSelection ? (
