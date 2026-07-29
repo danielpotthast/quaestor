@@ -33,7 +33,7 @@ def test_information_for_user_exposes_phone_and_pin_field_rules():
     rules = BANKS_BY_NAME["trade_republic"].information_for_user["field_rules"]
 
     assert rules["phone"]["strip_whitespace"] is True
-    assert rules["pin"]["strip_whitespace"] is False
+    assert not rules["pin"]["strip_whitespace"]
     assert any(rule["regex"] == r"^\+" for rule in rules["phone"]["rules"])
     assert any(rule["regex"] == r"^\d{4}$" for rule in rules["pin"]["rules"])
     for field_rules in rules.values():

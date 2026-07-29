@@ -76,7 +76,7 @@ def test_create_rule_can_opt_out_of_content(http_client: TestClient, session_fac
         "/api/notification_rules", json=_balance_rule_payload(account_id, include_content=False)
     ).json()
 
-    assert created["include_content"] is False
+    assert not created["include_content"]
 
 
 def test_create_transaction_rule_round_trips_criteria(http_client: TestClient, session_factory: sessionmaker):
@@ -103,7 +103,7 @@ def test_update_rule(http_client: TestClient, session_factory: sessionmaker, cap
     assert response.status_code == 200
     updated = response.json()
     assert updated["threshold"] == 42.0
-    assert updated["enabled"] is False
+    assert not updated["enabled"]
     assert updated["name"] == "Updated"
     assert_log_contains(caplog, message="Updated Notificationrule: enabled: True → False")
 

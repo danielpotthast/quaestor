@@ -65,7 +65,7 @@ def test_create_credential_returns_created_credential(http_client: TestClient):
     assert body["bank_name"]
     assert body["bank_icon"] == "/static/banks/ing-diba.png"
     assert body["accounts"] == []
-    assert body["requires_two_factor_authentication"] is False
+    assert not body["requires_two_factor_authentication"]
 
 
 def test_create_credential_rejects_duplicate_for_same_user(http_client: TestClient):

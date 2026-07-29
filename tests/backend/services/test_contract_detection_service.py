@@ -323,4 +323,4 @@ def test_new_matching_payments_reactivate_an_archived_contract(session_factory: 
         contract_detection_service.detect_contracts_for_account(db_session=session, account=account)
 
         session.refresh(contract)
-        assert contract.is_archived is False
+        assert not contract.is_archived

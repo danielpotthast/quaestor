@@ -93,7 +93,7 @@ def test_assign_and_remove_transaction(
     member = body["members"][0]
     assert member["id"] == transaction_id
     assert member["contract_assignment"] == "MANUAL"
-    assert member["is_outlier"] is False
+    assert not member["is_outlier"]
 
     removed = http_client.delete(f"/api/contracts/{contract['id']}/transactions/{transaction_id}")
     assert removed.status_code == 200
@@ -240,5 +240,5 @@ def test_archiving_hides_contract_from_default_list_but_keeps_it_reachable(
     assert http_client.get(f"/api/contracts/{contract['id']}").json()["is_archived"] is True
 
     unarchived = http_client.patch(f"/api/contracts/{contract['id']}", json={"name": "Gym", "archived": False})
-    assert unarchived.json()["is_archived"] is False
+    assert not unarchived.json()["is_archived"]
     assert [c["id"] for c in http_client.get("/api/contracts").json()] == [contract["id"]]

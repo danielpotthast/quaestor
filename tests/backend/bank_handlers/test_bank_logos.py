@@ -34,4 +34,4 @@ def test_logo_slug_resolves_name_to_slug(name: str, expected: str):
 def test_logo_exists_only_for_shipped_logos():
     # sparkasse.png is shipped; a derived slug for a bank without a logo is not.
     assert logo_exists("sparkasse") is True
-    assert logo_exists("deutsche-bank-fil-berlin") is False
+    assert not logo_exists("deutsche-bank-fil-berlin")

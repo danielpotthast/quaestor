@@ -327,7 +327,7 @@ def test_session_uses_camt_xml_for_banks_without_mt940(monkeypatch: pytest.Monke
     assert client.get_transactions_xml.call_count == 2
     assert client.get_transactions.call_count == 0
     assert len(transactions) == 1
-    assert transactions[0].pending is False
+    assert not transactions[0].pending
 
 
 def test_session_translates_missing_system_id_into_invalid_credentials(

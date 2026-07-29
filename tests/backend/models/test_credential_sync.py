@@ -403,7 +403,7 @@ def test_pending_that_becomes_booked_is_not_duplicated(session_factory: sessionm
         credential = session.get(entity=Credential, ident=credential_id)
         transactions = credential.accounts[0].transactions
         assert len(transactions) == 1
-        assert transactions[0].pending is False
+        assert not transactions[0].pending
         assert transactions[0].purpose == "booked"
 
 
@@ -468,8 +468,8 @@ def test_sync_resolves_expected_within_tolerance_and_moves_note(
         transactions = session.get(entity=Credential, ident=credential_id).accounts[0].transactions
         assert len(transactions) == 1
         booking = transactions[0]
-        assert booking.expected is False
-        assert booking.pending is False
+        assert not booking.expected
+        assert not booking.pending
         assert booking.amount == -105.0
         assert booking.note == "expected note"
 
@@ -522,7 +522,7 @@ def test_sync_matches_expected_by_other_party_substring(session_factory: session
     with session_factory() as session:
         transactions = session.get(entity=Credential, ident=credential_id).accounts[0].transactions
         assert len(transactions) == 1
-        assert transactions[0].expected is False
+        assert not transactions[0].expected
         assert transactions[0].other_party == "NETFLIX INTL BV"
 
 

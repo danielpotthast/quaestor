@@ -145,7 +145,7 @@ def test_transaction_mapping_signs_and_dates():
     assert booked.date == date(year=2026, month=6, day=25)
     assert booked.other_party == "Serverprofis GmbH"
     assert booked.purpose is None
-    assert booked.pending is False
+    assert not booked.pending
     assert booked.bank_reference == "ref-42"
     assert booked.transaction_type == TransactionType.OUTGOING
 
@@ -441,4 +441,4 @@ def test_non_paypal_accounts_keep_complete_history(fake_http: Callable[[dict], F
     handler.session_state = {"session_id": SESSION_ID}
 
     with handler.session() as bank:
-        assert bank.get_accounts()[0].transaction_history_incomplete is False
+        assert not bank.get_accounts()[0].transaction_history_incomplete

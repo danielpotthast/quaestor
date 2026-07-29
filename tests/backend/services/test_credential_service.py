@@ -258,7 +258,7 @@ def test_sync_leaves_two_factor_flag_unset_without_two_factor(
     with session_factory() as session:
         credential = session.get(entity=Credential, ident=credential_id)
         credential_service.sync_credential_object(credential=credential, reevaluate_two_factor_requirement=True)
-        assert credential.requires_two_factor_authentication is False
+        assert not credential.requires_two_factor_authentication
 
 
 @pytest.mark.parametrize(

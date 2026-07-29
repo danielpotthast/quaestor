@@ -30,7 +30,7 @@ def test_version_endpoint_no_update_when_running_ahead(http_client: TestClient, 
 
     body = http_client.get("/api/version").json()
 
-    assert body["update_available"] is False
+    assert not body["update_available"]
 
 
 def test_version_endpoint_handles_github_failure(http_client: TestClient, monkeypatch: pytest.MonkeyPatch):

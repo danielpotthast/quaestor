@@ -28,20 +28,20 @@ def _get_outliers_from_amounts(amounts: list[float]) -> list[float]:
 def test_no_stats_means_no_outlier():
     contract = Contract(median_amount=None, amount_spread=None)
 
-    assert contract.is_outlier(_create_transaction_from_amount(999.0)) is False
+    assert not contract.is_outlier(_create_transaction_from_amount(999.0))
 
 
 def test_contract_without_expected_date_is_never_overdue():
     contract = Contract(expected_next_date=None)
 
-    assert contract.is_overdue_on(today=LATEST_DATE) is False
+    assert not contract.is_overdue_on(today=LATEST_DATE)
 
 
 def test_contract_within_grace_period_is_not_overdue():
     contract = Contract(expected_next_date=LATEST_DATE)
 
-    assert contract.is_overdue_on(today=LATEST_DATE) is False
-    assert contract.is_overdue_on(today=LATEST_DATE + timedelta(days=OVERDUE_GRACE_DAYS)) is False
+    assert not contract.is_overdue_on(today=LATEST_DATE)
+    assert not contract.is_overdue_on(today=LATEST_DATE + timedelta(days=OVERDUE_GRACE_DAYS))
 
 
 def test_contract_past_grace_period_is_overdue():

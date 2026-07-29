@@ -37,7 +37,7 @@ def test_verify_totp_accepts_current_code_and_rejects_wrong_one():
     secret = two_factor_service.generate_secret()
 
     assert two_factor_service.verify_totp(secret=secret, code=pyotp.TOTP(secret).now()) is True
-    assert two_factor_service.verify_totp(secret=secret, code="000000") is False
+    assert not two_factor_service.verify_totp(secret=secret, code="000000")
 
 
 def test_enable_requires_setup_first(session_factory: sessionmaker):
@@ -84,7 +84,7 @@ def test_backup_code_logs_in_once_then_is_consumed(session_factory: sessionmaker
         assert two_factor_service.verify_login_code(db_session=db_session, user=attached, code=codes[0]) is True
         assert_log_contains(caplog, message="Consumed a backup code for")
         # Single use: the same code must not work a second time.
-        assert two_factor_service.verify_login_code(db_session=db_session, user=attached, code=codes[0]) is False
+        assert not two_factor_service.verify_login_code(db_session=db_session, user=attached, code=codes[0])
         # A lowercase, space-separated variant of another code still matches (normalization).
         messy = codes[1].lower().replace("-", " ")
         assert two_factor_service.verify_login_code(db_session=db_session, user=attached, code=messy) is True
@@ -100,7 +100,7 @@ def test_disable_clears_secret_and_backup_codes(session_factory: sessionmaker, c
         two_factor_service.disable(db_session=db_session, user=attached, code=pyotp.TOTP(secret).now())
 
         assert_log_contains(caplog, message="Disabled 2FA for")
-        assert attached.two_factor_enabled is False
+        assert not attached.two_factor_enabled
         assert attached.two_factor_secret is None
         assert attached.backup_codes == []
 
@@ -131,7 +131,7 @@ def test_regenerate_backup_codes_replaces_and_invalidates_old(
         assert_log_contains(caplog, message="Regenerated backup codes for")
         assert len(new_codes) == two_factor_service.BACKUP_CODE_COUNT
         assert set(new_codes).isdisjoint(old_codes)
-        assert two_factor_service.verify_login_code(db_session=db_session, user=attached, code=old_codes[0]) is False
+        assert not two_factor_service.verify_login_code(db_session=db_session, user=attached, code=old_codes[0])
         assert two_factor_service.verify_login_code(db_session=db_session, user=attached, code=new_codes[0]) is True
 
 

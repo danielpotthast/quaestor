@@ -22,7 +22,7 @@ def test_setup_returns_secret_and_qr(http_client: TestClient):
     assert "issuer=Quaestor" in body["otpauth_uri"]
     assert body["qr_code"].startswith("data:image/svg+xml")
     # 2FA is disabled until setup is done
-    assert http_client.get("/api/auth/me").json()["two_factor_enabled"] is False
+    assert not http_client.get("/api/auth/me").json()["two_factor_enabled"]
 
 
 def test_enable_with_valid_code_returns_backup_codes_and_flags_user(http_client: TestClient):
@@ -58,7 +58,7 @@ def test_enable_with_wrong_code_is_rejected(http_client: TestClient):
     response = http_client.post(f"/api/users/{user_id}/2fa/enable", json={"code": "000000"})
 
     assert response.status_code == 422
-    assert http_client.get("/api/auth/me").json()["two_factor_enabled"] is False
+    assert not http_client.get("/api/auth/me").json()["two_factor_enabled"]
 
 
 def test_login_with_2fa_returns_challenge_instead_of_session(http_client: TestClient):
@@ -139,7 +139,7 @@ def test_disable_requires_valid_code(http_client: TestClient):
 
     response = http_client.post(f"/api/users/{user_id}/2fa/disable", json={"code": current_totp(secret)})
     assert response.status_code == 204
-    assert http_client.get("/api/auth/me").json()["two_factor_enabled"] is False
+    assert not http_client.get("/api/auth/me").json()["two_factor_enabled"]
 
 
 def test_regenerate_backup_codes_invalidates_the_old_set(http_client: TestClient):
