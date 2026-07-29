@@ -1,10 +1,12 @@
 'use client'
 
-import { ChevronDown } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, Search } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { usePopoverScroll } from '@/lib/use-popover-scroll'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { handleSelectListArrowKeys } from '@/components/ui/select-list-keyboard'
 import {
   Popover,
@@ -27,6 +29,7 @@ export interface MultiSelectPopoverProps<T extends string> {
   onChange: (next: T[]) => void
   triggerLabel: string
   selectAll?: { all: string; none: string; count: (selectedCount: number) => string }
+  searchPlaceholder?: string
   checkboxIdPrefix: string
   className?: string
 }
@@ -39,12 +42,17 @@ export function MultiSelectPopover<T extends string>({
   onChange,
   triggerLabel,
   selectAll,
+  searchPlaceholder,
   checkboxIdPrefix,
   className,
 }: MultiSelectPopoverProps<T>) {
   const listRef = usePopoverScroll<HTMLUListElement>()
+  const [query, setQuery] = useState('')
   const selectedSet = new Set(selected)
   const selectedCount = selected.length
+  const visibleOptions = query
+    ? options.filter((option) => option.label.toLowerCase().includes(query.toLowerCase()))
+    : options
 
   const toggle = (value: T) => {
     const next = new Set(selectedSet)
@@ -54,7 +62,7 @@ export function MultiSelectPopover<T extends string>({
   }
 
   return (
-    <Popover>
+    <Popover onOpenChange={(open) => open || setQuery('')}>
       <PopoverTrigger
         id={id}
         type="button"
@@ -91,12 +99,30 @@ export function MultiSelectPopover<T extends string>({
             </div>
           </div>
         ) : null}
+        {searchPlaceholder ? (
+          <div
+            className={cn('border-border/40 relative p-2', visibleOptions.length > 0 && 'border-b')}
+          >
+            <Search
+              className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              inputMode="search"
+              value={query}
+              placeholder={searchPlaceholder}
+              onChange={(event) => setQuery(event.target.value)}
+              className="pl-8"
+            />
+          </div>
+        ) : null}
         <ul
           ref={listRef}
           aria-label={ariaLabel}
           className="max-h-72 overflow-y-auto overscroll-contain p-1"
         >
-          {options.map((option) => {
+          {visibleOptions.map((option) => {
             const checkboxId = `${checkboxIdPrefix}-${option.value}`
             return (
               <li key={option.value}>

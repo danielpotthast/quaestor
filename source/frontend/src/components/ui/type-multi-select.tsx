@@ -49,6 +49,7 @@ export function TypeMultiSelect({ id, selected, onChange, className }: TypeMulti
         none: t('search.selectNone'),
         count: (count) => t('filters.typeCount', { count }),
       }}
+      searchPlaceholder={t('search.filterPlaceholder')}
       checkboxIdPrefix="type-multi"
       className={className}
     />

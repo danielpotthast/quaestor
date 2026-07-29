@@ -34,6 +34,7 @@ function CategoryMultiSelect({ id, selectedIds, onChange, className }: CategoryM
         none: t('search.selectNone'),
         count: (count) => t('filters.categoriesCount', { count }),
       }}
+      searchPlaceholder={t('search.filterPlaceholder')}
       checkboxIdPrefix="category-multi"
       className={className}
     />
