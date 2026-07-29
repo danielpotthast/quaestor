@@ -5,31 +5,19 @@ import { ApiError, NetworkError } from '@/lib/api'
 import { ensureAuthenticated, redirectIfAuthenticated, safeNext } from '@/lib/auth'
 
 describe('safeNext', () => {
-  it('returns "/" for undefined or empty next', () => {
-    expect(safeNext(undefined)).toBe('/')
-    expect(safeNext('')).toBe('/')
-  })
-
-  it('returns "/" for protocol-relative URLs', () => {
-    expect(safeNext('//evil.com')).toBe('/')
-    expect(safeNext('//evil.com/path')).toBe('/')
-  })
-
-  it('returns "/" for absolute URLs', () => {
-    expect(safeNext('http://evil.com')).toBe('/')
-    expect(safeNext('https://evil.com')).toBe('/')
-  })
-
-  it('returns "/" for non-rooted paths', () => {
-    expect(safeNext('relative')).toBe('/')
-  })
-
-  it('passes through same-origin absolute paths', () => {
-    expect(safeNext('/')).toBe('/')
-    expect(safeNext('/transactions/1')).toBe('/transactions/1')
-    expect(safeNext('/account/42/transactions/7?from=overview')).toBe(
-      '/account/42/transactions/7?from=overview',
-    )
+  it.each([
+    [undefined, '/'],
+    ['', '/'],
+    ['//evil.com', '/'],
+    ['//evil.com/path', '/'],
+    ['http://evil.com', '/'],
+    ['https://evil.com', '/'],
+    ['relative', '/'],
+    ['/', '/'],
+    ['/transactions/1', '/transactions/1'],
+    ['/account/42/transactions/7?from=overview', '/account/42/transactions/7?from=overview'],
+  ])('safeNext(%j) → %j', (input, expected) => {
+    expect(safeNext(input)).toBe(expected)
   })
 })
 
@@ -143,7 +131,11 @@ describe('redirectIfAuthenticated', () => {
     await expect(redirectIfAuthenticated({ queryClient, next: undefined })).resolves.toBeUndefined()
   })
 
-  it('redirects to / when authenticated and no next is given', async () => {
+  it.each([
+    [undefined, '/'],
+    ['/account/42/transactions/7', '/account/42/transactions/7'],
+    ['//evil.com', '/'],
+  ])('redirects an authenticated user with next=%j to %j', async (next, expectedTo) => {
     const queryClient = buildQueryClient()
     globalThis.fetch = vi.fn().mockResolvedValue(
       new Response(
@@ -160,61 +152,11 @@ describe('redirectIfAuthenticated', () => {
 
     let thrown: unknown
     try {
-      await redirectIfAuthenticated({ queryClient, next: undefined })
+      await redirectIfAuthenticated({ queryClient, next })
     } catch (err) {
       thrown = err
     }
     expect(thrown).toBeTruthy()
-    expect((thrown as { options?: { to?: string } }).options?.to).toBe('/')
-  })
-
-  it('redirects to a safe next path when authenticated', async () => {
-    const queryClient = buildQueryClient()
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          id: 1,
-          user_name: 'alice',
-          display_name: 'Alice',
-          language: 'en',
-          balance: 0,
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } },
-      ),
-    ) as unknown as typeof fetch
-
-    let thrown: unknown
-    try {
-      await redirectIfAuthenticated({ queryClient, next: '/account/42/transactions/7' })
-    } catch (err) {
-      thrown = err
-    }
-    expect(thrown).toBeTruthy()
-    expect((thrown as { options?: { to?: string } }).options?.to).toBe('/account/42/transactions/7')
-  })
-
-  it('ignores an unsafe next and redirects to /', async () => {
-    const queryClient = buildQueryClient()
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          id: 1,
-          user_name: 'alice',
-          display_name: 'Alice',
-          language: 'en',
-          balance: 0,
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } },
-      ),
-    ) as unknown as typeof fetch
-
-    let thrown: unknown
-    try {
-      await redirectIfAuthenticated({ queryClient, next: '//evil.com' })
-    } catch (err) {
-      thrown = err
-    }
-    expect(thrown).toBeTruthy()
-    expect((thrown as { options?: { to?: string } }).options?.to).toBe('/')
+    expect((thrown as { options?: { to?: string } }).options?.to).toBe(expectedTo)
   })
 })

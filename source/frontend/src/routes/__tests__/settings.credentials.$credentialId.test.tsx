@@ -5,19 +5,11 @@ import type { Mock } from 'vitest'
 
 import '@/i18n'
 
-vi.mock('@tanstack/react-router', () => ({
-  Link: ({
-    to,
-    children,
-    ...rest
-  }: { to: string; children: React.ReactNode } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a href={to} {...rest}>
-      {children}
-    </a>
-  ),
-  createFileRoute: () => () => ({}),
-  useRouter: () => ({ history: { push: vi.fn() } }),
-}))
+vi.mock('@tanstack/react-router', async () =>
+  (await import('./-routerMock')).routerMocks({
+    useRouter: () => ({ history: { push: vi.fn() } }),
+  }),
+)
 
 import { CredentialDetailView } from '@/pages/settings.credentials.$credentialId'
 import type { AccountRead, CredentialRead } from '@/lib/auth'

@@ -8,19 +8,11 @@ import i18n from 'i18next'
 import '@/i18n'
 import { buildUser, jsonResponse, renderWithQuery } from './-settingsUserTestHelpers'
 
-vi.mock('@tanstack/react-router', () => ({
-  Link: ({
-    to,
-    children,
-    ...rest
-  }: { to: string; children: React.ReactNode } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a href={to} {...rest}>
-      {children}
-    </a>
-  ),
-  createFileRoute: () => () => ({}),
-  useRouter: () => ({ history: { push: vi.fn() } }),
-}))
+vi.mock('@tanstack/react-router', async () =>
+  (await import('./-routerMock')).routerMocks({
+    useRouter: () => ({ history: { push: vi.fn() } }),
+  }),
+)
 
 import { SettingsSessionsView } from '@/pages/settings.user.sessions'
 import type { SessionRead } from '@/lib/sessions'

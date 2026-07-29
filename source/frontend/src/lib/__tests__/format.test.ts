@@ -15,21 +15,17 @@ import {
 } from '../format'
 
 describe('formatAmountForInput', () => {
-  it('renders two decimals with a German comma and no thousands separator', () => {
-    expect(formatAmountForInput(1234.5)).toBe('1234,50')
-  })
-
-  it('formats zero', () => {
-    expect(formatAmountForInput(0)).toBe('0,00')
-  })
-
-  it('formats negative values with a minus sign', () => {
-    expect(formatAmountForInput(-42)).toBe('-42,00')
-  })
-
-  it('rounds to two decimals', () => {
-    expect(formatAmountForInput(1.239)).toBe('1,24')
-  })
+  it.each([
+    [1234.5, '1234,50'],
+    [0, '0,00'],
+    [-42, '-42,00'],
+    [1.239, '1,24'],
+  ])(
+    'formats %d as %s (German comma, no thousands sep, rounded to two decimals)',
+    (input, expected) => {
+      expect(formatAmountForInput(input)).toBe(expected)
+    },
+  )
 })
 
 describe('todayIso', () => {
@@ -148,19 +144,13 @@ describe('formatRelativeDateTime', () => {
     await i18n.changeLanguage('en')
   })
 
-  it('labels the same calendar day as "today" with the time', () => {
+  it.each([
+    ['2026-05-20T08:30:00Z', 'Heute um 08:30 Uhr'],
+    ['2026-05-19T23:00:00Z', 'Gestern um 23:00 Uhr'],
+    ['2026-05-18T09:15:00Z', 'Vorgestern um 09:15 Uhr'],
+  ])('labels %s as %s in the UTC display zone', (iso, expected) => {
     setDisplayTimeZone('UTC')
-    expect(formatRelativeDateTime('2026-05-20T08:30:00Z', t, now)).toBe('Heute um 08:30 Uhr')
-  })
-
-  it('labels the previous calendar day as "yesterday"', () => {
-    setDisplayTimeZone('UTC')
-    expect(formatRelativeDateTime('2026-05-19T23:00:00Z', t, now)).toBe('Gestern um 23:00 Uhr')
-  })
-
-  it('labels two calendar days ago as "the day before yesterday"', () => {
-    setDisplayTimeZone('UTC')
-    expect(formatRelativeDateTime('2026-05-18T09:15:00Z', t, now)).toBe('Vorgestern um 09:15 Uhr')
+    expect(formatRelativeDateTime(iso, t, now)).toBe(expected)
   })
 
   it('falls back to the full long date for older timestamps', () => {
@@ -180,32 +170,16 @@ describe('formatRelativeDateTime', () => {
 })
 
 describe('formatIban', () => {
-  it('groups a German IBAN into 4-char blocks', () => {
-    expect(formatIban('DE89370400440532013000')).toBe('DE89 3704 0044 0532 0130 00')
-  })
-
-  it('accepts an already-spaced IBAN and re-emits canonical grouping', () => {
-    expect(formatIban('DE89 3704 0044 0532 0130 00')).toBe('DE89 3704 0044 0532 0130 00')
-  })
-
-  it('formats a 15-char Norwegian IBAN (minimum length)', () => {
-    expect(formatIban('NO9386011117947')).toBe('NO93 8601 1117 947')
-  })
-
-  it('leaves names unchanged', () => {
-    expect(formatIban('Max Mustermann')).toBe('Max Mustermann')
-  })
-
-  it('leaves the empty string unchanged', () => {
-    expect(formatIban('')).toBe('')
-  })
-
-  it('leaves mixed text unchanged even if it starts with a country code', () => {
-    expect(formatIban('DE82 Mustermann GmbH')).toBe('DE82 Mustermann GmbH')
-  })
-
-  it('leaves lowercase IBAN-shaped strings unchanged (backend emits uppercase)', () => {
-    expect(formatIban('de89370400440532013000')).toBe('de89370400440532013000')
+  it.each([
+    ['DE89370400440532013000', 'DE89 3704 0044 0532 0130 00'],
+    ['DE89 3704 0044 0532 0130 00', 'DE89 3704 0044 0532 0130 00'],
+    ['NO9386011117947', 'NO93 8601 1117 947'],
+    ['Max Mustermann', 'Max Mustermann'],
+    ['', ''],
+    ['DE82 Mustermann GmbH', 'DE82 Mustermann GmbH'],
+    ['de89370400440532013000', 'de89370400440532013000'],
+  ])('formatIban(%j) → %j', (input, expected) => {
+    expect(formatIban(input)).toBe(expected)
   })
 })
 
@@ -214,48 +188,19 @@ describe('relativeDateKey', () => {
   const yesterday = new Date(2026, 4, 21)
   const older = new Date(2026, 4, 20)
 
-  it('returns "today" for the same local day', () => {
-    expect(relativeDateKey(new Date(2026, 4, 22, 14, 30), today)).toBe('today')
-  })
-
-  it('returns "yesterday" for the previous local day', () => {
-    expect(relativeDateKey(yesterday, today)).toBe('yesterday')
-  })
-
-  it('returns "dayBeforeYesterday" for two local days ago', () => {
-    expect(relativeDateKey(new Date(2026, 4, 20), today)).toBe('dayBeforeYesterday')
-  })
-
-  it('returns null for dates older than the day before yesterday', () => {
-    expect(relativeDateKey(new Date(2026, 4, 19), today)).toBeNull()
-    expect(relativeDateKey(older, new Date(2026, 4, 23))).toBeNull()
-  })
-
-  it('handles month boundaries correctly', () => {
-    const may1 = new Date(2026, 4, 1)
-    const apr30 = new Date(2026, 3, 30)
-    expect(relativeDateKey(apr30, may1)).toBe('yesterday')
-  })
-
-  it('returns "tomorrow" for the day immediately after today', () => {
-    const tomorrow = new Date(2026, 4, 23)
-    expect(relativeDateKey(tomorrow, today)).toBe('tomorrow')
-  })
-
-  it('returns "dayAfterTomorrow" for two days after today', () => {
-    const dayAfter = new Date(2026, 4, 24)
-    expect(relativeDateKey(dayAfter, today)).toBe('dayAfterTomorrow')
-  })
-
-  it('returns "future" for any date three or more days after today', () => {
-    const threeDaysOut = new Date(2026, 4, 25)
-    const nextMonth = new Date(2026, 5, 1)
-    expect(relativeDateKey(threeDaysOut, today)).toBe('future')
-    expect(relativeDateKey(nextMonth, today)).toBe('future')
-  })
-
-  it('still returns "today" for a future-time-of-day on the same local day', () => {
-    // A txn dated "today" with an arbitrary time should not be classified as future.
-    expect(relativeDateKey(new Date(2026, 4, 22, 23, 59), today)).toBe('today')
+  it.each([
+    [new Date(2026, 4, 22, 14, 30), today, 'today'],
+    [yesterday, today, 'yesterday'],
+    [new Date(2026, 4, 20), today, 'dayBeforeYesterday'],
+    [new Date(2026, 4, 19), today, null],
+    [older, new Date(2026, 4, 23), null],
+    [new Date(2026, 4, 23), today, 'tomorrow'],
+    [new Date(2026, 4, 24), today, 'dayAfterTomorrow'],
+    [new Date(2026, 4, 25), today, 'future'],
+    [new Date(2026, 5, 1), today, 'future'],
+    [new Date(2026, 3, 30), new Date(2026, 4, 1), 'yesterday'],
+    [new Date(2026, 4, 22, 23, 59), today, 'today'],
+  ])('classifies %s relative to %s as %s', (date, reference, expected) => {
+    expect(relativeDateKey(date, reference)).toBe(expected)
   })
 })

@@ -4,18 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import '@/i18n'
 import i18n from 'i18next'
 
-vi.mock('@tanstack/react-router', () => ({
-  Link: ({
-    to,
-    children,
-    ...rest
-  }: { to: string; children: React.ReactNode } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a href={to} {...rest}>
-      {children}
-    </a>
-  ),
-  createFileRoute: () => () => ({}),
-}))
+vi.mock('@tanstack/react-router', async () => (await import('./-routerMock')).routerMocks())
 
 import { SettingsUserIndexView } from '@/pages/settings.user.index'
 

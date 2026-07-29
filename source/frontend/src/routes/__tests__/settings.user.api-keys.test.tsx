@@ -7,18 +7,7 @@ import i18n from 'i18next'
 
 import '@/i18n'
 
-vi.mock('@tanstack/react-router', () => ({
-  Link: ({
-    to,
-    children,
-    ...rest
-  }: { to: string; children: React.ReactNode } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a href={to} {...rest}>
-      {children}
-    </a>
-  ),
-  createFileRoute: () => () => ({}),
-}))
+vi.mock('@tanstack/react-router', async () => (await import('./-routerMock')).routerMocks())
 
 vi.mock('@/lib/clipboard', () => ({ copyText: vi.fn().mockResolvedValue(undefined) }))
 

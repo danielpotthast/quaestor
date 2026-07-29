@@ -6,19 +6,11 @@ import '@/i18n'
 
 // TanStack Router's <Link> needs a router context. Replace with a plain anchor
 // so we can assert hrefs; stub createFileRoute / useRouter so the module loads.
-vi.mock('@tanstack/react-router', () => ({
-  Link: ({
-    to,
-    children,
-    ...rest
-  }: { to: string; children: React.ReactNode } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a href={to} {...rest}>
-      {children}
-    </a>
-  ),
-  createFileRoute: () => () => ({}),
-  useRouter: () => ({ history: { push: vi.fn() } }),
-}))
+vi.mock('@tanstack/react-router', async () =>
+  (await import('./-routerMock')).routerMocks({
+    useRouter: () => ({ history: { push: vi.fn() } }),
+  }),
+)
 
 import { SettingsIndexView } from '@/pages/settings.index'
 

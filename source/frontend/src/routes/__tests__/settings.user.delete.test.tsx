@@ -6,19 +6,11 @@ import type { Mock } from 'vitest'
 import '@/i18n'
 import i18n from 'i18next'
 
-vi.mock('@tanstack/react-router', () => ({
-  Link: ({
-    to,
-    children,
-    ...rest
-  }: { to: string; children: React.ReactNode } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a href={to} {...rest}>
-      {children}
-    </a>
-  ),
-  createFileRoute: () => () => ({}),
-  useRouter: () => ({ history: { push: vi.fn() } }),
-}))
+vi.mock('@tanstack/react-router', async () =>
+  (await import('./-routerMock')).routerMocks({
+    useRouter: () => ({ history: { push: vi.fn() } }),
+  }),
+)
 
 import { SettingsDeleteAccountView } from '@/pages/settings.user.delete'
 import { buildUser, renderWithQuery } from './-settingsUserTestHelpers'
