@@ -250,8 +250,8 @@ export function StatsView({
           value={direction}
           onChange={updateDirection}
           options={[
-            { value: 'OUTGOING', label: t('stats.direction.OUTGOING') },
-            { value: 'INCOMING', label: t('stats.direction.INCOMING') },
+            { value: 'OUTGOING', label: t('common.expenses') },
+            { value: 'INCOMING', label: t('common.income') },
           ]}
         />
         <TransactionFilterFields
@@ -269,11 +269,7 @@ export function StatsView({
         <p className="text-muted-foreground text-sm">{t('stats.noMatches')}</p>
       ) : (
         <>
-          <ContractsSummaryCard
-            accountIds={accountIds}
-            categories={categoriesParam}
-            cashflow={cashflow.data}
-          />
+          <ContractsSummaryCard accountIds={accountIds} categories={categoriesParam} />
 
           <RunwayCard credentials={credentials} accountIds={accountIds} cashflow={cashflow.data} />
 

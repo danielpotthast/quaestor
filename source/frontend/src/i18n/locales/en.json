@@ -93,6 +93,8 @@
     "current": "Current",
     "overdue": "Overdue",
     "archived": "Archived",
+    "expenses": "Expenses",
+    "income": "Income",
     "resetFilters": "Reset filters"
   },
   "errors": {
@@ -626,10 +628,6 @@
     "error": "Could not load.",
     "noMatches": "No data matches your filters.",
     "other": "Other",
-    "direction": {
-      "OUTGOING": "Expenses",
-      "INCOMING": "Income"
-    },
     "chartTypeLabel": "Chart type",
     "chartType": {
       "bar": "Bar",
@@ -642,7 +640,7 @@
       "perDay": "Per day",
       "perMonth": "Per month",
       "perYear": "Per year",
-      "fixedCostRatio": "Fixed-cost ratio",
+      "sum": "Sum",
       "viewAll": "View all"
     },
     "cashflow": {
@@ -700,7 +698,7 @@
       "monthsUnit": "months",
       "infinite": "∞",
       "balance": "Balance",
-      "avgExpenses": "Average expenses/month",
+      "avgExpenses": "Average expenses per month",
       "yearsValue_one": "{{count}} year",
       "yearsValue_other": "{{count}} years",
       "monthsValue_one": "{{count}} month",

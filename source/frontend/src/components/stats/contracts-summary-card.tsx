@@ -2,21 +2,17 @@ import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, Repeat } from 'lucide-react'
 
-import { sumContractsForPeriod, useContracts } from '@/lib/contract'
-import { formatMoney, formatPercent } from '@/lib/format'
+import { sumContractsForPeriod, useContracts, type ContractCostPeriod } from '@/lib/contract'
+import { formatMoney } from '@/lib/format'
 import { ChartCard } from '@/components/stats/chart-card'
-import { StatMetricGroup } from '@/components/stats/stat-metric'
-import { averageMonthlyIncome, fixedCostRatio, type MonthlyCashflow } from '@/lib/statistics'
 import type { TransactionCategory } from '@/lib/transaction'
 
 export function ContractsSummaryCard({
   accountIds,
   categories,
-  cashflow,
 }: {
   accountIds: number[]
   categories: TransactionCategory[]
-  cashflow: MonthlyCashflow[] | undefined
 }) {
   const { t } = useTranslation()
   const { data } = useContracts()
@@ -26,10 +22,27 @@ export function ContractsSummaryCard({
       (categories.length === 0 ||
         (contract.category !== null && categories.includes(contract.category))),
   )
-  const ratio = fixedCostRatio(
-    sumContractsForPeriod(contracts, 'MONTHLY'),
-    averageMonthlyIncome(cashflow ?? []),
-  )
+
+  const periods: { key: ContractCostPeriod; label: string; hideOnMobile?: boolean }[] = [
+    { key: 'DAY', label: t('stats.contracts.perDay') },
+    { key: 'MONTHLY', label: t('stats.contracts.perMonth') },
+    { key: 'YEARLY', label: t('stats.contracts.perYear'), hideOnMobile: true },
+  ]
+  const expenses = contracts.filter((c) => (c.amount_per_day ?? 0) < 0)
+  const income = contracts.filter((c) => (c.amount_per_day ?? 0) > 0)
+  const rows: { label: string; contracts: typeof contracts; className?: string }[] = [
+    { label: t('common.expenses'), contracts: expenses },
+    { label: t('common.income'), contracts: income },
+    {
+      label: t('stats.contracts.sum'),
+      contracts,
+      className: 'border-border/60 border-t font-semibold',
+    },
+  ]
+  const cellColor = (period: ContractCostPeriod, subset: typeof contracts): string => {
+    const value = sumContractsForPeriod(subset, period)
+    return value < 0 ? 'text-destructive' : value > 0 ? 'text-success' : ''
+  }
 
   return (
     <ChartCard
@@ -53,26 +66,38 @@ export function ContractsSummaryCard({
         </Link>
       }
     >
-      <StatMetricGroup
-        metrics={[
-          {
-            label: t('stats.contracts.perDay'),
-            value: formatMoney(sumContractsForPeriod(contracts, 'DAY')),
-          },
-          {
-            label: t('stats.contracts.perMonth'),
-            value: formatMoney(sumContractsForPeriod(contracts, 'MONTHLY')),
-          },
-          {
-            label: t('stats.contracts.perYear'),
-            value: formatMoney(sumContractsForPeriod(contracts, 'YEARLY')),
-          },
-          {
-            label: t('stats.contracts.fixedCostRatio'),
-            value: ratio === null ? '–' : formatPercent(ratio),
-          },
-        ]}
-      />
+      <table className="w-full border-collapse text-sm tabular-nums">
+        <thead>
+          <tr className="text-muted-foreground text-xs">
+            <th className="w-px" />
+            {periods.map((period) => (
+              <th
+                key={period.key}
+                className={`px-2 py-1 text-right font-medium ${period.hideOnMobile ? 'hidden sm:table-cell' : ''}`}
+              >
+                {period.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.label} className={row.className}>
+              <th className="text-muted-foreground py-1.5 pr-2 text-left font-normal whitespace-nowrap">
+                {row.label}
+              </th>
+              {periods.map((period) => (
+                <td
+                  key={period.key}
+                  className={`px-2 py-1.5 text-right ${period.hideOnMobile ? 'hidden sm:table-cell' : ''} ${cellColor(period.key, row.contracts)}`}
+                >
+                  {formatMoney(sumContractsForPeriod(row.contracts, period.key))}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </ChartCard>
   )
 }

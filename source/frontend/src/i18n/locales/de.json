@@ -93,6 +93,8 @@
     "current": "Aktuell",
     "overdue": "Überfällig",
     "archived": "Archiviert",
+    "expenses": "Ausgaben",
+    "income": "Einnahmen",
     "resetFilters": "Filter zurücksetzen"
   },
   "errors": {
@@ -626,10 +628,6 @@
     "error": "Konnte nicht geladen werden.",
     "noMatches": "Keine Daten passen zu deinen Filtern.",
     "other": "Sonstige",
-    "direction": {
-      "OUTGOING": "Ausgaben",
-      "INCOMING": "Einnahmen"
-    },
     "chartTypeLabel": "Diagrammtyp",
     "chartType": {
       "bar": "Balken",
@@ -642,7 +640,7 @@
       "perDay": "Pro Tag",
       "perMonth": "Pro Monat",
       "perYear": "Pro Jahr",
-      "fixedCostRatio": "Fixkostenquote",
+      "sum": "Summe",
       "viewAll": "Alle ansehen"
     },
     "cashflow": {
@@ -700,7 +698,7 @@
       "monthsUnit": "Monate",
       "infinite": "∞",
       "balance": "Kontostand",
-      "avgExpenses": "Durchschnittliche Ausgaben/Monat",
+      "avgExpenses": "Durchschnittliche Ausgaben pro Monat",
       "yearsValue_one": "{{count}} Jahr",
       "yearsValue_other": "{{count}} Jahre",
       "monthsValue_one": "{{count}} Monat",
