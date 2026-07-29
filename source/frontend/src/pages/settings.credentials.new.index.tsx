@@ -7,6 +7,7 @@ import { BookOpen, ChevronRight } from 'lucide-react'
 import { type SupportedBank, bankDisplayName, viaHandlerLabel } from '@/lib/credentials'
 import { ibanToBlz, isLikelyIban } from '@/lib/bankIdentity'
 import { BankLogo } from '@/components/BankLogo'
+import { QueryStates } from '@/components/query-states'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BackLink } from '@/components/back-link'
@@ -72,11 +73,11 @@ export function BankPickerView({
           aria-label={t('credentials.searchPlaceholder')}
         />
       </div>
-      {isLoading ? (
-        <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
-      ) : isError ? (
-        <p className="text-destructive text-sm">{t('login.genericError')}</p>
-      ) : (
+      <QueryStates
+        query={{ isLoading, isError }}
+        loadingText={t('common.loading')}
+        errorText={t('login.genericError')}
+      >
         <div className="flex flex-col gap-3">
           {manualBank ? (
             <ul className="border-border bg-card flex flex-col rounded-lg border">
@@ -92,7 +93,7 @@ export function BankPickerView({
             <VirtualBankList matches={matches} existingAccountCounts={existingAccountCounts} />
           )}
         </div>
-      )}
+      </QueryStates>
     </main>
   )
 }

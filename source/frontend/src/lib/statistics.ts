@@ -19,7 +19,11 @@ import {
   type TransactionCategory,
   type TransactionType,
 } from './transaction'
-import { appendParams } from '@/lib/searchParams'
+import { accountScopedParams } from '@/lib/searchParams'
+
+export const statisticsQueryKeys = {
+  all: ['statistics'] as const,
+}
 
 export type StatsDirection = 'INCOMING' | 'OUTGOING'
 
@@ -229,15 +233,7 @@ export function buildStatsQueryString(
   extra: Record<string, string | number | string[] | undefined> = {},
   categories: TransactionCategory[] = [],
 ): string {
-  const params = new URLSearchParams()
-  for (const accountId of accountIds) {
-    params.append('account_ids', String(accountId))
-  }
-  for (const category of categories) {
-    params.append('categories', category)
-  }
-  appendParams(params, { ...filters, ...extra })
-  return params.toString()
+  return accountScopedParams(accountIds, { categories, ...filters, ...extra }).toString()
 }
 
 const sortedIds = (accountIds: number[]) => [...accountIds].sort((a, b) => a - b)
@@ -261,7 +257,7 @@ function useStats<T>(args: {
   )
   return useQuery({
     queryKey: [
-      'statistics',
+      ...statisticsQueryKeys.all,
       path,
       sortedIds(accountIds),
       filters,
@@ -382,7 +378,7 @@ export function useNetWorthRange(start: string, end: string, accountIds: number[
     params.append('account_ids', String(accountId))
   }
   return useQuery({
-    queryKey: ['statistics', 'net-worth', 'range', start, end, sortedIds(accountIds)],
+    queryKey: [...statisticsQueryKeys.all, 'net-worth', 'range', start, end, sortedIds(accountIds)],
     queryFn: () => api<NetWorthRangeResponse>(`/statistics/net-worth/range?${params.toString()}`),
     enabled: accountIds.length > 0 && start.length > 0 && end.length > 0,
     staleTime: 30_000,

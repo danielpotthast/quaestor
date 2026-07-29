@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from './api'
 import type { TransactionRead } from './accountHistory'
 import type { TransactionCategory, TransactionType } from './transaction'
-import { appendParams } from '@/lib/searchParams'
+import { accountScopedParams } from '@/lib/searchParams'
 
 export interface TransactionFilters {
   text?: string
@@ -18,15 +18,11 @@ export interface TransactionFilters {
 }
 
 export function buildFilterQueryString(accountIds: number[], filters: TransactionFilters): string {
-  const params = new URLSearchParams()
-  for (const accountId of accountIds) {
-    params.append('account_ids', String(accountId))
-  }
-  appendParams(params, { ...filters })
-  return params.toString()
+  return accountScopedParams(accountIds, { ...filters }).toString()
 }
 
 export const transactionSearchQueryKeys = {
+  all: ['transactions', 'search'] as const,
   search: (accountIds: number[], filters: TransactionFilters) =>
     ['transactions', 'search', [...accountIds].sort((a, b) => a - b), filters] as const,
 }
@@ -36,10 +32,7 @@ export function useSearchTransactions(accountIds: number[], filters: Transaction
   return useQuery({
     queryKey: transactionSearchQueryKeys.search(accountIds, filters),
     queryFn: () => api<TransactionRead[]>(`/transactions/search?${queryString}`),
-    // Don't fire when nothing is selected — the backend would 422 anyway.
     enabled: accountIds.length > 0,
-    // Keep results stable while the user reads them; refetch only when the
-    // filter dict changes (which produces a new query key).
     staleTime: 30_000,
   })
 }

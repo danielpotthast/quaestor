@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils'
 import { TRANSACTION_CATEGORIES, type TransactionCategory } from '@/lib/transaction'
 import type { SingleSelectOption } from '@/components/ui/single-select-popover'
 
-export const CATEGORY_ICONS: Record<string, LucideIcon> = {
+export const CATEGORY_ICONS: Record<TransactionCategory, LucideIcon> = {
   SALARY: Wallet,
   ALLOWANCE: HandCoins,
   PENSION: Armchair,
@@ -96,7 +96,7 @@ export function CategoryAvatar({
   className?: string
   iconClassName?: string
 }) {
-  const Icon = CATEGORY_ICONS[category] ?? CircleHelp
+  const Icon = CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS] ?? CircleHelp
   return (
     <span
       className={cn(

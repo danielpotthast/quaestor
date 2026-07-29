@@ -21,6 +21,7 @@ import type { LucideIcon } from 'lucide-react'
 import type { TFunction } from 'i18next'
 
 import { Button } from '@/components/ui/button'
+import { RowActions } from '@/components/row-actions'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -285,7 +286,6 @@ function RuleRow({
   const { t } = useTranslation()
   const update = useUpdateNotificationRule()
   const remove = useDeleteNotificationRule()
-  const [confirming, setConfirming] = useState(false)
   const Icon =
     rule.trigger === 'balance_threshold' && rule.direction === 'above'
       ? TrendingUp
@@ -305,7 +305,6 @@ function RuleRow({
       await remove.mutateAsync(rule.id)
       toast.success(t('notifications.deleted'))
     } catch (err) {
-      setConfirming(false)
       toast.error(readApiErrorMessage(err, t))
     }
   }
@@ -332,43 +331,34 @@ function RuleRow({
         onCheckedChange={toggleEnabled}
         aria-label={t('notifications.enabledLabel')}
       />
-      {confirming ? (
-        <div className="flex gap-1.5">
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            disabled={remove.isPending}
-            onClick={onDelete}
-          >
-            {t('common.confirm')}
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => setConfirming(false)}>
-            {t('common.cancel')}
-          </Button>
-        </div>
-      ) : (
-        <>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onEdit}
-            aria-label={t('notifications.edit')}
-          >
-            <Pencil className="size-3.5" aria-hidden="true" />
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            onClick={() => setConfirming(true)}
-            aria-label={t('common.delete')}
-          >
-            <Trash2 className="size-3.5" aria-hidden="true" />
-          </Button>
-        </>
-      )}
+      <RowActions
+        onDelete={onDelete}
+        deleting={remove.isPending}
+        confirmLabel={t('common.confirm')}
+        className="gap-1.5"
+        renderTrigger={(confirm) => (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onEdit}
+              aria-label={t('notifications.edit')}
+            >
+              <Pencil className="size-3.5" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={confirm}
+              aria-label={t('common.delete')}
+            >
+              <Trash2 className="size-3.5" aria-hidden="true" />
+            </Button>
+          </>
+        )}
+      />
     </li>
   )
 }

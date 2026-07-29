@@ -217,7 +217,8 @@ export function DetailRow({
 
 function TypeBadge({ transactionType }: { transactionType: string }) {
   const { t } = useTranslation()
-  const Icon = TRANSACTION_TYPE_ICONS[transactionType] ?? CircleHelp
+  const Icon =
+    TRANSACTION_TYPE_ICONS[transactionType as keyof typeof TRANSACTION_TYPE_ICONS] ?? CircleHelp
   return (
     <span className="inline-flex items-center gap-2">
       <Icon className="text-muted-foreground size-4" aria-hidden="true" />

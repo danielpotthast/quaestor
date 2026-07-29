@@ -3,6 +3,7 @@ import { Link, useCanGoBack, useRouter } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeftRight } from 'lucide-react'
 
+import { QueryStates } from '@/components/query-states'
 import { AccountMultiSelect } from '@/components/ui/account-multi-select'
 import { AdvancedFilters } from '@/components/ui/advanced-filters'
 import { AmountRangeFields } from '@/components/ui/amount-range-fields'
@@ -270,48 +271,48 @@ function SearchResults({
     )
   }, [query.data, sort, linkSource])
 
-  if (query.isLoading) {
-    return <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
-  }
-  if (query.isError) {
-    return <p className="text-destructive text-sm">{t('search.error')}</p>
-  }
-  if (results.length === 0) {
-    return <p className="text-muted-foreground text-sm">{t('common.noMatchingTransactions')}</p>
-  }
-
   return (
-    <section aria-label={t('search.resultsHeading')} className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-primary text-sm font-semibold">
-          {t('search.resultsCount', { count: results.length })}
-        </h2>
-        <SingleSelectPopover
-          ariaLabel={t('search.sortLabel')}
-          value={sort}
-          onChange={setSort}
-          className="w-auto"
-          options={[
-            { value: 'date_desc', label: t('search.sortDateDesc') },
-            { value: 'date_asc', label: t('search.sortDateAsc') },
-            { value: 'amount_desc', label: t('search.sortAmountDesc') },
-            { value: 'amount_asc', label: t('search.sortAmountAsc') },
-            { value: 'amount_abs_desc', label: t('search.sortAmountAbsDesc') },
-            { value: 'amount_abs_asc', label: t('search.sortAmountAbsAsc') },
-          ]}
-        />
-      </div>
-      <ul className="flex flex-col">
-        {results.map((transaction) => (
-          <ResultRow
-            key={`${transaction.account_id}-${transaction.id}`}
-            transaction={transaction}
-            accountName={showAccountLabel ? accountNameById.get(transaction.account_id) : undefined}
-            linkSource={linkSource}
+    <QueryStates
+      query={query}
+      loadingText={t('common.loading')}
+      errorText={t('search.error')}
+      isEmpty={results.length === 0}
+      emptyText={t('common.noMatchingTransactions')}
+    >
+      <section aria-label={t('search.resultsHeading')} className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-primary text-sm font-semibold">
+            {t('search.resultsCount', { count: results.length })}
+          </h2>
+          <SingleSelectPopover
+            ariaLabel={t('search.sortLabel')}
+            value={sort}
+            onChange={setSort}
+            className="w-auto"
+            options={[
+              { value: 'date_desc', label: t('search.sortDateDesc') },
+              { value: 'date_asc', label: t('search.sortDateAsc') },
+              { value: 'amount_desc', label: t('search.sortAmountDesc') },
+              { value: 'amount_asc', label: t('search.sortAmountAsc') },
+              { value: 'amount_abs_desc', label: t('search.sortAmountAbsDesc') },
+              { value: 'amount_abs_asc', label: t('search.sortAmountAbsAsc') },
+            ]}
           />
-        ))}
-      </ul>
-    </section>
+        </div>
+        <ul className="flex flex-col">
+          {results.map((transaction) => (
+            <ResultRow
+              key={`${transaction.account_id}-${transaction.id}`}
+              transaction={transaction}
+              accountName={
+                showAccountLabel ? accountNameById.get(transaction.account_id) : undefined
+              }
+              linkSource={linkSource}
+            />
+          ))}
+        </ul>
+      </section>
+    </QueryStates>
   )
 }
 

@@ -30,7 +30,7 @@ export interface AccountHistoryPage {
   total_days: number
 }
 
-export interface AccountWithBank {
+export interface FoundAccount {
   account: AccountRead
   bank: string
   credentialId: number
@@ -38,13 +38,14 @@ export interface AccountWithBank {
 }
 
 export const accountQueryKeys = {
+  all: ['account'] as const,
   history: (accountId: number) => ['account', accountId, 'history'] as const,
 }
 
 export function findAccountInUser(
   user: UserRead | undefined,
   accountId: number,
-): AccountWithBank | null {
+): FoundAccount | null {
   if (!user) return null
   for (const credential of user.credentials) {
     for (const account of credential.accounts) {

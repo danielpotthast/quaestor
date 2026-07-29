@@ -17,7 +17,9 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-export const TRANSACTION_TYPE_ICONS: Record<string, LucideIcon> = {
+import { type TransactionType } from '@/lib/transaction'
+
+export const TRANSACTION_TYPE_ICONS: Record<TransactionType, LucideIcon> = {
   INCOMING: ArrowDownLeft,
   OUTGOING: ArrowUpRight,
   BUY: TrendingUp,

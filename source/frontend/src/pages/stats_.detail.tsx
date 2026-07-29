@@ -4,6 +4,7 @@ import { Collapsible } from 'radix-ui'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { BankLogo } from '@/components/BankLogo'
+import { QueryStates } from '@/components/query-states'
 import { DateRangeFields } from '@/components/ui/date-range-fields'
 import { useAuthMe } from '@/lib/auth'
 import { useAccountGroupLayout } from '@/lib/accountGroups'
@@ -156,56 +157,53 @@ export function NetWorthDetailPage() {
         />
       </div>
 
-      {range.isLoading ? (
-        <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
-      ) : range.isError ? (
-        <p className="text-destructive text-sm">{t('stats.day.error')}</p>
-      ) : groups.length === 0 ? (
-        <p className="text-muted-foreground border-border bg-card rounded-lg border border-dashed p-8 text-center text-sm">
-          {t('stats.day.empty')}
-        </p>
-      ) : (
-        <>
-          <ul className="flex flex-col gap-6">
-            {groups.map((group) => {
-              const heading =
-                group.heading === '__ungrouped__'
-                  ? t('credentials.groups.ungroupedHeading')
-                  : group.heading
-              return (
-                <li key={group.key} className="flex flex-col gap-1">
-                  {heading ? (
-                    <h2 className="text-muted-foreground px-2 text-xs font-semibold tracking-wide uppercase">
-                      {heading}
-                    </h2>
-                  ) : null}
-                  <ul className="flex flex-col">
-                    {group.accounts.map((account) => (
-                      <AccountChangeRow
-                        key={account.id}
-                        account={account}
-                        change={changeByAccount.get(account.id)}
-                        open={expandedIds.has(account.id)}
-                        onOpenChange={(next) => setExpanded(account.id, next)}
-                      />
-                    ))}
-                  </ul>
-                </li>
-              )
-            })}
-          </ul>
+      <QueryStates
+        query={range}
+        loadingText={t('common.loading')}
+        errorText={t('stats.day.error')}
+        isEmpty={groups.length === 0}
+        emptyText={t('stats.day.empty')}
+        emptyClassName="border-border bg-card rounded-lg border border-dashed p-8 text-center"
+      >
+        <ul className="flex flex-col gap-6">
+          {groups.map((group) => {
+            const heading =
+              group.heading === '__ungrouped__'
+                ? t('credentials.groups.ungroupedHeading')
+                : group.heading
+            return (
+              <li key={group.key} className="flex flex-col gap-1">
+                {heading ? (
+                  <h2 className="text-muted-foreground px-2 text-xs font-semibold tracking-wide uppercase">
+                    {heading}
+                  </h2>
+                ) : null}
+                <ul className="flex flex-col">
+                  {group.accounts.map((account) => (
+                    <AccountChangeRow
+                      key={account.id}
+                      account={account}
+                      change={changeByAccount.get(account.id)}
+                      open={expandedIds.has(account.id)}
+                      onOpenChange={(next) => setExpanded(account.id, next)}
+                    />
+                  ))}
+                </ul>
+              </li>
+            )
+          })}
+        </ul>
 
-          {range.data ? (
-            <div className="border-border mx-2 flex items-center justify-between border-t pt-3 text-sm font-semibold tabular-nums">
-              <span>{t('stats.day.total')}</span>
-              <span className="flex items-baseline gap-3">
-                <span>{formatMoney(totalAtEnd)}</span>
-                <DifferenceAmount value={totalDifference} />
-              </span>
-            </div>
-          ) : null}
-        </>
-      )}
+        {range.data ? (
+          <div className="border-border mx-2 flex items-center justify-between border-t pt-3 text-sm font-semibold tabular-nums">
+            <span>{t('stats.day.total')}</span>
+            <span className="flex items-baseline gap-3">
+              <span>{formatMoney(totalAtEnd)}</span>
+              <DifferenceAmount value={totalDifference} />
+            </span>
+          </div>
+        ) : null}
+      </QueryStates>
     </main>
   )
 }

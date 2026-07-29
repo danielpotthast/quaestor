@@ -1,18 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Bar,
-  BarChart,
-  Cell,
-  Legend,
-  matchByDataKey,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 
 import { cn } from '@/lib/utils'
 import { formatMoney, formatPercent } from '@/lib/format'
@@ -24,8 +12,8 @@ import {
   type ChartType,
 } from '@/lib/statistics'
 import type { TransactionCategory } from '@/lib/transaction'
-import { AXIS_TICK, euroFormat, TOOLTIP_STYLE } from './chartTheme'
-import { ArrowTick, DRILL_ARROW_WIDTH, ToggleTick, ValueBarShape } from './chart-parts'
+import { TOOLTIP_STYLE } from './chartTheme'
+import { HorizontalDrillBarChart, type DrillBarRow } from './horizontal-drill-bar-chart'
 
 // Beyond this many slices the pie collapses the tail into a single "Other"
 // wedge so it stays legible on a phone.
@@ -202,72 +190,25 @@ export function CategoryChart({
     )
   }
 
-  const chartData = data.map((datum) =>
-    hidden.has(datum.category) ? { ...datum, value: null } : datum,
-  )
+  const rows: DrillBarRow[] = data.map((datum) => ({
+    key: datum.category,
+    label: datum.label,
+    value: datum.value,
+  }))
   const total = data
     .filter((datum) => !hidden.has(datum.category))
     .reduce((sum, datum) => sum + datum.value, 0)
-  const height = Math.max(data.length * 30 + 16, 160)
   return (
-    <div className="w-full" style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: onDrill ? 0 : 16 }}>
-          <XAxis
-            type="number"
-            domain={[0, 'dataMax']}
-            tick={AXIS_TICK}
-            tickFormatter={euroFormat}
-          />
-          <YAxis
-            type="category"
-            dataKey="category"
-            width={130}
-            interval={0}
-            tick={
-              <ToggleTick
-                labelOf={(category) => t(`category.${category}`)}
-                hidden={hidden}
-                onToggle={toggle}
-                maxChars={18}
-              />
-            }
-          />
-          {onDrill ? (
-            <YAxis
-              yAxisId="drill"
-              orientation="right"
-              type="category"
-              dataKey="category"
-              interval={0}
-              width={DRILL_ARROW_WIDTH}
-              axisLine={false}
-              tickLine={false}
-              tickSize={0}
-              tickMargin={0}
-              tick={<ArrowTick onSelect={(category) => onDrill(category as TransactionCategory)} />}
-            />
-          ) : null}
-          <Tooltip
-            cursor={{ fill: 'var(--color-muted)' }}
-            content={<CategoryTooltip total={total} />}
-          />
-          <Bar
-            dataKey="value"
-            radius={[0, 4, 4, 0]}
-            animationMatchBy={matchByDataKey('category')}
-            shape={
-              <ValueBarShape
-                labelHidden={(row) => hidden.has((row as CategoryChartDatum).category)}
-              />
-            }
-          >
-            {chartData.map((datum, index) => (
-              <Cell key={datum.category} fill={sliceColor(datum.category, index)} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <HorizontalDrillBarChart
+      rows={rows}
+      hidden={hidden}
+      labelOf={(category) => t(`category.${category}`)}
+      colorOf={(key, index) => sliceColor(key as TransactionCategory, index)}
+      maxChars={18}
+      axisWidth={130}
+      tooltip={<CategoryTooltip total={total} />}
+      onToggleHidden={toggle}
+      onDrill={onDrill ? (key) => onDrill(key as TransactionCategory) : undefined}
+    />
   )
 }

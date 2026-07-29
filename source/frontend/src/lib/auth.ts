@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { redirect } from '@tanstack/react-router'
 import { api, ApiError } from './api'
+import { accountQueryKeys } from './accountHistory'
 import type { SyncJob, SyncJobStatus } from './credentials'
 import { syncJobWebSocketUrl } from './syncSocket'
 
@@ -318,7 +319,7 @@ function useSyncMachine(startJobs: () => Promise<SyncJob[]>, invalidateAccounts:
     }
     queryClient.invalidateQueries({ queryKey: authQueryKeys.me })
     if (invalidateAccounts) {
-      queryClient.invalidateQueries({ queryKey: ['account'] })
+      queryClient.invalidateQueries({ queryKey: accountQueryKeys.all })
     }
   }, [phase, allJobsTerminal, queue.length, jobs, queryClient, invalidateAccounts])
 

@@ -7,12 +7,8 @@ import {
   type TransactionRead,
 } from './accountHistory'
 import { authQueryKeys } from './auth'
+import { transactionSearchQueryKeys } from './transactionSearch'
 
-/**
- * Mirrors `TransactionType` in source/backend/models/transaction_type.py.
- * ZERO (amount == 0 / Nullgeschäft) sits last so the search-form dropdown
- * doesn't have it as the accidental first pick.
- */
 export const TRANSACTION_TYPES = [
   'INCOMING',
   'OUTGOING',
@@ -144,11 +140,8 @@ export function useLinkTransfer(accountId: number, transactionId: number) {
         },
       ),
     onSuccess: () => {
-      // Both legs change type + counterpart; their details and histories all
-      // live under the 'account' prefix. Search results embed the linked
-      // state too, so refresh those as well.
-      queryClient.invalidateQueries({ queryKey: ['account'] })
-      queryClient.invalidateQueries({ queryKey: ['transactions', 'search'] })
+      queryClient.invalidateQueries({ queryKey: accountQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: transactionSearchQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: authQueryKeys.me })
     },
   })
@@ -162,13 +155,10 @@ export function useUnlinkTransfer(accountId: number, transactionId: number) {
         method: 'DELETE',
       }),
     onSuccess: () => {
-      // Reload the detail (counterpart disappears) and invalidate both affected
-      // accounts' histories — the type changes on both legs. The counterpart's
-      // account id isn't known here, so invalidate the whole 'account' prefix.
       queryClient.invalidateQueries({
         queryKey: transactionQueryKeys.detail(accountId, transactionId),
       })
-      queryClient.invalidateQueries({ queryKey: ['account'] })
+      queryClient.invalidateQueries({ queryKey: accountQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: authQueryKeys.me })
     },
   })

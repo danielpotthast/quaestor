@@ -17,3 +17,13 @@ export function appendParams(params: URLSearchParams, entries: Record<string, un
     params.append(key, String(value))
   }
 }
+
+export function accountScopedParams(
+  accountIds: number[],
+  entries: Record<string, unknown> = {},
+): URLSearchParams {
+  const params = new URLSearchParams()
+  for (const accountId of accountIds) params.append('account_ids', String(accountId))
+  appendParams(params, entries)
+  return params
+}

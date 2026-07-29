@@ -7,6 +7,8 @@ import { Check, Copy, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { RowActions } from '@/components/row-actions'
+import { QueryStates } from '@/components/query-states'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { copyText } from '@/lib/clipboard'
@@ -40,19 +42,19 @@ export function SettingsApiKeysView() {
         <CreateKeyForm onCreated={setCreatedKey} />
       )}
 
-      {keys.isLoading ? (
-        <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
-      ) : keys.isError ? (
-        <p className="text-destructive text-sm">{t('apiKeys.loadError')}</p>
-      ) : sortedList.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t('apiKeys.empty')}</p>
-      ) : (
+      <QueryStates
+        query={keys}
+        loadingText={t('common.loading')}
+        errorText={t('apiKeys.loadError')}
+        isEmpty={sortedList.length === 0}
+        emptyText={t('apiKeys.empty')}
+      >
         <ul className="border-border bg-card flex flex-col rounded-lg border">
           {sortedList.map((apiKey) => (
             <ApiKeyRow key={apiKey.id} apiKey={apiKey} />
           ))}
         </ul>
-      )}
+      </QueryStates>
     </SettingsSubPage>
   )
 }
@@ -143,14 +145,12 @@ function CreatedKeyReveal({ apiKey, onDone }: { apiKey: ApiKeyCreated; onDone: (
 function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRead }) {
   const { t } = useTranslation()
   const remove = useDeleteApiKey()
-  const [confirming, setConfirming] = useState(false)
 
   const onDelete = async () => {
     try {
       await remove.mutateAsync(apiKey.id)
       toast.success(t('apiKeys.deleted'))
     } catch (err) {
-      setConfirming(false)
       toast.error(readApiErrorMessage(err, t))
     }
   }
@@ -173,41 +173,24 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRead }) {
         </dl>
       </div>
       <div className="sm:w-40 sm:self-center">
-        {confirming ? (
-          <div className="flex gap-2">
+        <RowActions
+          onDelete={onDelete}
+          deleting={remove.isPending}
+          confirmLabel={t('common.confirm')}
+          className="gap-2 [&>button]:flex-1"
+          renderTrigger={(confirm) => (
             <Button
               type="button"
               variant="destructive"
               size="sm"
-              disabled={remove.isPending}
-              onClick={onDelete}
-              className="flex-1"
+              onClick={confirm}
+              className="w-full"
             >
-              {t('common.confirm')}
+              <Trash2 className="size-3.5" aria-hidden="true" />
+              {t('common.delete')}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={remove.isPending}
-              onClick={() => setConfirming(false)}
-              className="flex-1"
-            >
-              {t('common.cancel')}
-            </Button>
-          </div>
-        ) : (
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            onClick={() => setConfirming(true)}
-            className="w-full"
-          >
-            <Trash2 className="size-3.5" aria-hidden="true" />
-            {t('common.delete')}
-          </Button>
-        )}
+          )}
+        />
       </div>
     </li>
   )

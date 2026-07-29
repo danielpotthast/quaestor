@@ -1,10 +1,11 @@
-import { useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { LogOut } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { RowActions } from '@/components/row-actions'
+import { QueryStates } from '@/components/query-states'
 import { readApiErrorMessage } from '@/lib/apiError'
 import {
   useRevokeAllOtherSessions,
@@ -24,7 +25,6 @@ export function SettingsSessionsView({ user }: SettingsSessionsViewProps) {
   const revokeOne = useRevokeSession(user.id)
   const revokeOthers = useRevokeAllOtherSessions(user.id)
   const logout = useLogout()
-  const [confirming, setConfirming] = useState(false)
 
   const handleRevokeOne = async (sessionId: number) => {
     try {
@@ -38,7 +38,6 @@ export function SettingsSessionsView({ user }: SettingsSessionsViewProps) {
   const handleRevokeOthers = async () => {
     try {
       await revokeOthers.mutateAsync()
-      setConfirming(false)
       toast.success(t('sessions.revokedAll'))
     } catch (err) {
       toast.error(readApiErrorMessage(err, t))
@@ -67,48 +66,28 @@ export function SettingsSessionsView({ user }: SettingsSessionsViewProps) {
       title={t('settings.sessions')}
       headerExtra={
         otherSessionCount > 0 ? (
-          confirming ? (
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleRevokeOthers}
-                disabled={revokeOthers.isPending}
-                size="sm"
-              >
-                {t('sessions.signOutEverywhereConfirm')}
+          <RowActions
+            onDelete={handleRevokeOthers}
+            deleting={revokeOthers.isPending}
+            confirmLabel={t('sessions.signOutEverywhereConfirm')}
+            className="gap-2"
+            renderTrigger={(confirm) => (
+              <Button type="button" variant="destructive" onClick={confirm} size="sm">
+                <LogOut className="size-3.5" aria-hidden="true" />
+                {t('sessions.signOutEverywhere')}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setConfirming(false)}
-                disabled={revokeOthers.isPending}
-                size="sm"
-              >
-                {t('common.cancel')}
-              </Button>
-            </div>
-          ) : (
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => setConfirming(true)}
-              size="sm"
-            >
-              <LogOut className="size-3.5" aria-hidden="true" />
-              {t('sessions.signOutEverywhere')}
-            </Button>
-          )
+            )}
+          />
         ) : null
       }
     >
-      {sessions.isLoading ? (
-        <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
-      ) : sessions.isError ? (
-        <p className="text-destructive text-sm">{t('sessions.loadError')}</p>
-      ) : sortedList.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t('sessions.empty')}</p>
-      ) : (
+      <QueryStates
+        query={sessions}
+        loadingText={t('common.loading')}
+        errorText={t('sessions.loadError')}
+        isEmpty={sortedList.length === 0}
+        emptyText={t('sessions.empty')}
+      >
         <ul className="border-border bg-card flex flex-col rounded-lg border">
           {sortedList.map((session) => (
             <SessionRow
@@ -121,7 +100,7 @@ export function SettingsSessionsView({ user }: SettingsSessionsViewProps) {
             />
           ))}
         </ul>
-      )}
+      </QueryStates>
     </SettingsSubPage>
   )
 }

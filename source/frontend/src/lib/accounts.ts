@@ -4,21 +4,13 @@ import { api } from './api'
 import { accountQueryKeys } from './accountHistory'
 import { authQueryKeys, type AccountRead, type CredentialRead } from './auth'
 import { formatIban } from './format'
+import { statisticsQueryKeys } from './statistics'
 
-/**
- * Primary label for an account: the user-set personalised name when present,
- * otherwise the formatted IBAN. Whitespace-only display names count as unset.
- */
 export function accountDisplayName(account: Pick<AccountRead, 'name' | 'display_name'>): string {
   const trimmed = account.display_name?.trim()
   return trimmed || formatIban(account.name)
 }
 
-/**
- * Secondary label to show below {@link accountDisplayName}: the formatted IBAN
- * when a personalised name is set, `null` otherwise (because the primary label
- * is already the IBAN, so a duplicate would be noise).
- */
 export function accountSecondaryName(
   account: Pick<AccountRead, 'name' | 'display_name'>,
 ): string | null {
@@ -44,7 +36,7 @@ export function useUpdateAccount() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: authQueryKeys.me })
       queryClient.invalidateQueries({ queryKey: accountQueryKeys.history(variables.accountId) })
-      queryClient.invalidateQueries({ queryKey: ['statistics'] })
+      queryClient.invalidateQueries({ queryKey: statisticsQueryKeys.all })
     },
   })
 }

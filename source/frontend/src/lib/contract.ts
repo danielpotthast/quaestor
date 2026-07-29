@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './api'
-import type { TransactionRead } from './accountHistory'
+import { accountQueryKeys, type TransactionRead } from './accountHistory'
 import type { TransactionCategory } from './transaction'
 
 export const CONTRACT_FREQUENCIES = [
@@ -185,7 +185,7 @@ export function useUpdateContract(contractId: number) {
     onSuccess: (updated) => {
       queryClient.setQueryData(contractQueryKeys.detail(contractId), updated)
       queryClient.invalidateQueries({ queryKey: contractQueryKeys.list })
-      queryClient.invalidateQueries({ queryKey: ['account'] })
+      queryClient.invalidateQueries({ queryKey: accountQueryKeys.all })
     },
   })
 }
@@ -196,7 +196,7 @@ export function useDeleteContract() {
     mutationFn: (contractId: number) => api<void>(`/contracts/${contractId}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: contractQueryKeys.list })
-      queryClient.invalidateQueries({ queryKey: ['account'] })
+      queryClient.invalidateQueries({ queryKey: accountQueryKeys.all })
     },
   })
 }
@@ -221,7 +221,7 @@ export function useSetTransactionContract() {
           }),
     onSuccess: (_updated, { fromContractId, toContractId }) => {
       queryClient.invalidateQueries({ queryKey: contractQueryKeys.list })
-      queryClient.invalidateQueries({ queryKey: ['account'] })
+      queryClient.invalidateQueries({ queryKey: accountQueryKeys.all })
       if (fromContractId !== null)
         queryClient.invalidateQueries({ queryKey: contractQueryKeys.detail(fromContractId) })
       if (toContractId !== null)
