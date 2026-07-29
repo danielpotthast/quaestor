@@ -248,6 +248,7 @@ export function AccountDetailView({
               <Link
                 to="/account/$accountId/search"
                 params={{ accountId: String(account.id) }}
+                search={{ account_ids: [account.id] }}
                 aria-label={t('account.search')}
                 className="text-primary hover:text-primary/80 group rounded-md p-1.5 transition-colors"
               >

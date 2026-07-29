@@ -219,8 +219,7 @@ describe('TransactionSearchView — form', () => {
     })
     const payload = lastPayload(onChange)
     expect(payload?.filters.amount_to).toBeUndefined()
-    // The anchor account is pre-selected by default.
-    expect(payload?.accountIds).toEqual([42])
+    expect([...(payload?.accountIds ?? [])].sort((a, b) => a - b)).toEqual([42, 43, 99])
   })
 
   it('preserves the existing URL filters in the form', () => {
@@ -231,22 +230,23 @@ describe('TransactionSearchView — form', () => {
 })
 
 describe('TransactionSearchView — accounts multi-select', () => {
-  it('preselects the anchor account by default', () => {
+  it('selects all accounts by default', () => {
     renderView()
-    expect(screen.getByLabelText('Accounts').textContent).toContain('1 account')
+    expect(screen.getByLabelText('Accounts').textContent).toContain('All accounts')
   })
 
-  it('lets the user pick more accounts', async () => {
+  it('lets the user narrow the accounts', async () => {
     const user = userEvent.setup()
     const { onChange } = renderView()
 
     await user.click(screen.getByLabelText('Accounts'))
-    // Each account row's checkbox is reachable by the account name.
     const tagesgeldRow = screen.getByText('Tagesgeld').closest('label')!
     await user.click(within(tagesgeldRow).getByRole('checkbox'))
 
     await waitFor(() =>
-      expect([...(lastPayload(onChange)?.accountIds ?? [])].sort()).toEqual([42, 43]),
+      expect([...(lastPayload(onChange)?.accountIds ?? [])].sort((a, b) => a - b)).toEqual([
+        42, 99,
+      ]),
     )
   })
 

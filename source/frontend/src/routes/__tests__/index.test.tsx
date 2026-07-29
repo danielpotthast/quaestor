@@ -70,7 +70,7 @@ describe('OverviewView', () => {
     expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings')
   })
 
-  it('renders the search link anchored on the first account with all accounts pre-selected', () => {
+  it('renders the search link anchored on the first account, searching all accounts', () => {
     const user = buildUser({
       credentials: [
         {
@@ -104,7 +104,7 @@ describe('OverviewView', () => {
     })
     render_(user)
     const search = screen.getByRole('link', { name: 'Search transactions' })
-    expect(search).toHaveAttribute('href', '/account/5/search?account_ids=5&account_ids=7')
+    expect(search).toHaveAttribute('href', '/account/5/search')
     const settings = screen.getByRole('link', { name: 'Settings' })
     expect(search.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })

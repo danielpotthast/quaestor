@@ -97,6 +97,28 @@ export function StatsView({
       ...next,
     })
 
+  const filtersActive =
+    accountIds.length !== allAccountIds.length ||
+    filters.date_from !== defaults.date_from ||
+    filters.date_to !== defaults.date_to ||
+    direction !== 'OUTGOING' ||
+    selectedCategories.length !== FILTERABLE_CATEGORIES.length ||
+    selectedTypes.length !== TRANSACTION_TYPES.length ||
+    linked !== 'unlinked' ||
+    hiddenCategories.length > 0 ||
+    hiddenParties.length > 0
+  const resetFilters = () =>
+    sync({
+      accountIds: allAccountIds,
+      filters: defaults,
+      direction: 'OUTGOING',
+      categories: [...FILTERABLE_CATEGORIES],
+      transactionTypes: [...TRANSACTION_TYPES],
+      linked: 'unlinked',
+      hiddenCategories: [],
+      hiddenParties: [],
+    })
+
   const updateAccounts = (next: number[]) => sync({ accountIds: next })
   const updateFilter = (key: keyof StatsFilters, value: string | undefined) =>
     sync({ filters: { ...filters, [key]: value } })
@@ -195,7 +217,7 @@ export function StatsView({
       </header>
 
       <section className="border-border bg-card flex flex-col gap-3 rounded-lg border p-3">
-        <FilterHeading />
+        <FilterHeading onReset={filtersActive ? resetFilters : undefined} />
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="stats-accounts">{t('common.accounts')}</Label>
           <AccountMultiSelect

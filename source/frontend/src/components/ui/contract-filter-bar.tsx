@@ -76,7 +76,7 @@ function ContractFilterBar({ credentials, filters, onChange }: ContractFilterBar
 
   return (
     <section className="border-border bg-card flex flex-col gap-3 rounded-lg border p-3">
-      <FilterHeading />
+      <FilterHeading onReset={hasActiveContractFilters(filters) ? () => onChange({}) : undefined} />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="contract-filter-text">{t('common.name')}</Label>
         <Input
@@ -176,16 +176,6 @@ function ContractFilterBar({ credentials, filters, onChange }: ContractFilterBar
           </div>
         </div>
       </details>
-
-      {hasActiveContractFilters(filters) ? (
-        <button
-          type="button"
-          className="text-primary hover:text-primary/80 cursor-pointer self-end text-xs transition-colors"
-          onClick={() => onChange({})}
-        >
-          {t('contracts.filtersReset')}
-        </button>
-      ) : null}
     </section>
   )
 }

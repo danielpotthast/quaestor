@@ -38,17 +38,23 @@ function TransactionSearchPage() {
   const { data: user } = useAuthMe()
 
   const onChange = useCallback(
-    ({ accountIds, filters }: { accountIds: number[]; filters: TransactionFilters }) =>
+    ({ accountIds, filters }: { accountIds: number[]; filters: TransactionFilters }) => {
+      const allIds = (user?.credentials ?? []).flatMap((credential) =>
+        credential.accounts.map((account) => account.id),
+      )
+      const isAllAccounts =
+        accountIds.length === allIds.length && allIds.every((id) => accountIds.includes(id))
       navigate({
         search: {
           ...filters,
-          account_ids: accountIds,
+          account_ids: isAllAccounts ? undefined : accountIds,
           link_account_id: search.link_account_id,
           link_transaction_id: search.link_transaction_id,
         } as TransactionSearchParams,
         replace: true,
-      }),
-    [navigate, search.link_account_id, search.link_transaction_id],
+      })
+    },
+    [navigate, user, search.link_account_id, search.link_transaction_id],
   )
 
   if (!user) return null // root guard already redirected

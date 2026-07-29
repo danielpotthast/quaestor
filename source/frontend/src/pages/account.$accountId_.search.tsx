@@ -33,13 +33,30 @@ export function TransactionSearchView({
   onChange,
 }: TransactionSearchViewProps) {
   const { t } = useTranslation()
-  const [accountIds, setAccountIds] = useState<number[]>(search.account_ids ?? [anchorAccountId])
+  const allAccountIds = useMemo(
+    () => credentials.flatMap((credential) => credential.accounts.map((account) => account.id)),
+    [credentials],
+  )
+  const [accountIds, setAccountIds] = useState<number[]>(search.account_ids ?? allAccountIds)
   const [draft, setDraft] = useState<TransactionFilters>(toFilters(search))
 
   const update = <K extends keyof TransactionFilters>(key: K, value: TransactionFilters[K]) =>
     setDraft((prev) => ({ ...prev, [key]: value }))
 
   const debouncedDraft = useDebouncedValue(draft, 300)
+
+  const [initial] = useState(() => ({
+    accountIds: search.account_ids ?? allAccountIds,
+    draft: toFilters(search),
+  }))
+  const sortedIds = (ids: number[]) => [...ids].sort((a, b) => a - b).join(',')
+  const isNonDefault =
+    sortedIds(accountIds) !== sortedIds(initial.accountIds) ||
+    JSON.stringify(draft) !== JSON.stringify(initial.draft)
+  const resetFilters = () => {
+    setAccountIds(initial.accountIds)
+    setDraft(initial.draft)
+  }
 
   const hasSelection =
     accountIds.length > 0 &&
@@ -75,6 +92,7 @@ export function TransactionSearchView({
         onAccountIdsChange={setAccountIds}
         draft={draft}
         onUpdate={update}
+        onReset={isNonDefault ? resetFilters : undefined}
       />
 
       {hasSelection ? (
@@ -114,12 +132,14 @@ function SearchForm({
   onAccountIdsChange,
   draft,
   onUpdate,
+  onReset,
 }: {
   credentials: CredentialRead[]
   accountIds: number[]
   onAccountIdsChange: (ids: number[]) => void
   draft: TransactionFilters
   onUpdate: <K extends keyof TransactionFilters>(key: K, value: TransactionFilters[K]) => void
+  onReset?: () => void
 }) {
   const { t } = useTranslation()
   const selectedCategories = draft.categories ?? [...TRANSACTION_CATEGORIES]
@@ -131,7 +151,7 @@ function SearchForm({
       noValidate
       className="border-border bg-card flex flex-col gap-3 rounded-lg border p-3"
     >
-      <FilterHeading />
+      <FilterHeading onReset={onReset} />
       <Field id="search-text" label={t('search.text')}>
         <Input
           id="search-text"

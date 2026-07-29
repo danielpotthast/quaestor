@@ -111,7 +111,6 @@ export function OverviewView({
             <Link
               to="/account/$accountId/search"
               params={{ accountId: String(searchAnchorId) }}
-              search={{ account_ids: allAccountIds }}
               aria-label={t('overview.search')}
               className="text-primary hover:text-primary/80 group rounded-md p-1.5 transition-colors"
             >

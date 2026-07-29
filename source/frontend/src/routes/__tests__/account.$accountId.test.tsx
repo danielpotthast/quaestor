@@ -242,7 +242,7 @@ describe('AccountDetailView', () => {
   it('renders the magnifier as a link to the search page for the current account', () => {
     renderView([])
     const search = screen.getByRole('link', { name: 'Search transactions' })
-    expect(search).toHaveAttribute('href', '/account/42/search')
+    expect(search).toHaveAttribute('href', '/account/42/search?account_ids=42')
   })
 
   it('shows the empty-state message when there are no transactions', () => {
