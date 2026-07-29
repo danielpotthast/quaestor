@@ -1,10 +1,37 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Pencil, Trash2, X } from 'lucide-react'
+import { Archive, ArchiveRestore, Check, Pencil, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+export function ArchiveContractButton({
+  archived,
+  onToggle,
+}: {
+  archived: boolean
+  onToggle: (archived: boolean) => void
+}) {
+  const { t } = useTranslation()
+  const label = archived ? t('contracts.unarchive') : t('contracts.archive')
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      aria-label={label}
+      onClick={() => onToggle(!archived)}
+      className="text-muted-foreground hover:text-foreground px-1 sm:px-2.5"
+    >
+      {archived ? (
+        <ArchiveRestore className="size-3.5" aria-hidden="true" />
+      ) : (
+        <Archive className="size-3.5" aria-hidden="true" />
+      )}
+    </Button>
+  )
+}
 
 export function RenameContractButton({
   disabled,

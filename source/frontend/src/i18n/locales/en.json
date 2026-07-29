@@ -89,7 +89,10 @@
       "6": "Sunday"
     },
     "passwordTooWeak": "Password does not meet all requirements",
-    "noMatchingTransactions": "No transactions match your filters."
+    "noMatchingTransactions": "No transactions match your filters.",
+    "current": "Current",
+    "overdue": "Overdue",
+    "archived": "Archived"
   },
   "errors": {
     "serverOffline": {
@@ -512,7 +515,6 @@
     "checkFailed": "Couldn't check for updates"
   },
   "sessions": {
-    "currentBadge": "Current",
     "lastUsed": "Last used",
     "ip": "IP",
     "unknownUserAgent": "Unknown device",
@@ -803,8 +805,6 @@
     "selectAccount": "Select account",
     "normalized": "Normalized",
     "nextExpected": "Next payment",
-    "overdue": "Overdue",
-    "overdueFilter": "Only overdue",
     "overdueBanner_one": "The next payment is {{count}} month overdue. Is this contract still active?",
     "overdueBanner_other": "The next payment is {{count}} months overdue. Is this contract still active?",
     "members_one": "{{count}} transaction",
@@ -856,6 +856,13 @@
     "lastPayment": "Last payment",
     "rename": "Rename contract",
     "renamed": "Contract renamed",
-    "deleteConfirm": "Delete?"
+    "deleteConfirm": "Delete?",
+    "archive": "Archive contract",
+    "unarchive": "Restore",
+    "unarchived": "Restored",
+    "statusLabel": "Status",
+    "statusOption": {
+      "active": "Active"
+    }
   }
 }

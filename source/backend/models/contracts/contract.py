@@ -2,6 +2,7 @@ import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     Date,
     DateTime,
 )
@@ -65,6 +66,7 @@ class Contract(Base):
 
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
     overdue_notified_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
     account: Mapped["Account"] = relationship(back_populates="contracts")
     transactions: Mapped[list["Transaction"]] = relationship(

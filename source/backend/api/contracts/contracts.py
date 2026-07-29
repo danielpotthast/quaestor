@@ -34,10 +34,13 @@ def create_contract(
 
 @router.get("", response_model=list[ContractRead])
 def list_contracts(
+    include_archived: bool = False,
     current_user: User = Depends(session_service.get_current_user_from_request),
     db_session: Session = Depends(get_session),
 ) -> list[ContractRead]:
-    contracts = contract_service.list_contracts_for_user(db_session=db_session, user=current_user)
+    contracts = contract_service.list_contracts_for_user(
+        db_session=db_session, user=current_user, include_archived=include_archived
+    )
     return [ContractRead.from_contract(contract) for contract in contracts]
 
 

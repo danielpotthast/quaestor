@@ -305,3 +305,22 @@ def test_periodic_overdue_check_logs_and_keeps_running_on_exception(
         asyncio.run(real_run_periodic_overdue_check())
 
     assert_log_contains(caplog, message="Overdue contract check run crashed")
+
+
+def test_new_matching_payments_reactivate_an_archived_contract(session_factory: sessionmaker):
+    with session_factory() as session:
+        account = make_account_with_new_user(session)
+        _seed(session, account_id=account.id, other_party="Netflix", amount=-12.99, day_offsets=[0, 30, 60, 90])
+        session.commit()
+        contract_detection_service.detect_contracts_for_account(db_session=session, account=account)
+
+        contract = session.query(Contract).one()
+        contract.is_archived = True
+        session.commit()
+
+        _seed(session, account_id=account.id, other_party="Netflix", amount=-12.99, day_offsets=[120, 150, 180])
+        session.commit()
+        contract_detection_service.detect_contracts_for_account(db_session=session, account=account)
+
+        session.refresh(contract)
+        assert contract.is_archived is False

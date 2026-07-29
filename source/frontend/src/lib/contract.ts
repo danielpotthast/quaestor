@@ -31,6 +31,7 @@ export interface ContractRead {
   frequency: ContractFrequency | null
   interval_days: number | null
   expected_next_date: string | null
+  is_archived: boolean
   is_overdue: boolean
   member_count: number
   amount_per_day: number | null
@@ -46,13 +47,21 @@ export interface ContractDetailRead extends ContractRead {
   members: ContractMemberRead[]
 }
 
+export const CONTRACT_STATUS_FILTERS = ['ACTIVE', 'ARCHIVED'] as const
+export type ContractStatusFilter = (typeof CONTRACT_STATUS_FILTERS)[number]
+export const DEFAULT_CONTRACT_STATUS: ContractStatusFilter[] = ['ACTIVE']
+
+export const CONTRACT_OVERDUE_FILTERS = ['OVERDUE', 'CURRENT'] as const
+export type ContractOverdueFilter = (typeof CONTRACT_OVERDUE_FILTERS)[number]
+
 export interface ContractFilters {
   account_ids?: number[]
   amount_from?: number
   amount_to?: number
   categories?: TransactionCategory[]
   frequencies?: ContractFrequencyFilter[]
-  overdue?: boolean
+  overdue?: ContractOverdueFilter[]
+  status?: ContractStatusFilter[]
   text?: string
 }
 
@@ -60,7 +69,9 @@ export function filterContracts(
   contracts: ContractRead[],
   filters: ContractFilters,
 ): ContractRead[] {
-  const { account_ids, amount_from, amount_to, categories, frequencies, overdue, text } = filters
+  const { account_ids, amount_from, amount_to, categories, frequencies, overdue, status, text } =
+    filters
+  const statuses = status ?? DEFAULT_CONTRACT_STATUS
   const needle = text?.trim().toLowerCase()
   return contracts.filter((contract) => {
     if (needle && !contract.name.toLowerCase().includes(needle)) return false
@@ -70,7 +81,8 @@ export function filterContracts(
     if (amount_from !== undefined && (contract.median_amount ?? -Infinity) < amount_from)
       return false
     if (amount_to !== undefined && (contract.median_amount ?? Infinity) > amount_to) return false
-    if (overdue && !contract.is_overdue) return false
+    if (overdue && !overdue.includes(contract.is_overdue ? 'OVERDUE' : 'CURRENT')) return false
+    if (!statuses.includes(contract.is_archived ? 'ARCHIVED' : 'ACTIVE')) return false
     return true
   })
 }
@@ -113,7 +125,8 @@ export function hasActiveContractFilters(filters: ContractFilters): boolean {
     filters.frequencies !== undefined ||
     filters.amount_from !== undefined ||
     filters.amount_to !== undefined ||
-    filters.overdue ||
+    filters.overdue !== undefined ||
+    filters.status !== undefined ||
     filters.text,
   )
 }
@@ -130,6 +143,7 @@ export interface ContractUpdatePayload {
   category?: TransactionCategory | null
   note?: string | null
   frequency?: ContractFrequency | null
+  archived?: boolean
 }
 
 export const contractQueryKeys = {
@@ -137,10 +151,11 @@ export const contractQueryKeys = {
   detail: (contractId: number) => ['contracts', contractId] as const,
 }
 
-export function useContracts() {
+export function useContracts(includeArchived = false) {
   return useQuery({
-    queryKey: contractQueryKeys.list,
-    queryFn: () => api<ContractRead[]>('/contracts'),
+    queryKey: includeArchived ? [...contractQueryKeys.list, 'archived'] : contractQueryKeys.list,
+    queryFn: () =>
+      api<ContractRead[]>(includeArchived ? '/contracts?include_archived=true' : '/contracts'),
   })
 }
 

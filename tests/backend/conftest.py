@@ -439,6 +439,7 @@ def build_contract(frequency: ContractFrequency | None, interval_days: int) -> C
         frequency=frequency,
         interval_days=interval_days,
         created_at=RECENT_DATE,
+        is_archived=False,
     )
 
 

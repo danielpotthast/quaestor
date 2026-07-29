@@ -146,7 +146,7 @@ function SessionRow({
         <div className="flex items-center gap-2">
           {session.is_current ? (
             <span className="bg-primary/15 text-primary inline-flex items-center rounded-md px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide">
-              {t('sessions.currentBadge')}
+              {t('common.current')}
             </span>
           ) : null}
           <span className="text-sm font-medium truncate" title={session.user_agent ?? undefined}>
@@ -162,8 +162,6 @@ function SessionRow({
           <dd>{session.ip ?? t('sessions.unknownIp')}</dd>
         </dl>
       </div>
-      {/* Fixed min-width so the Log-out and End-session buttons line up
-          across rows even when the labels differ in length. */}
       <div className="sm:w-40 sm:self-center">
         {session.is_current ? (
           <Button

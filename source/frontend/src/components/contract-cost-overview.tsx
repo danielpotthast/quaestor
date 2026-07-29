@@ -138,7 +138,7 @@ function ContractCostTable({ contracts }: { contracts: ContractRead[] }) {
                 />
                 <span className="col-span-2 row-start-1 flex min-w-0 items-center gap-2 lg:col-span-1 lg:col-start-2">
                   <span className="truncate font-medium">{contract.name}</span>
-                  {contract.is_overdue ? <OverdueBadge label={t('contracts.overdue')} /> : null}
+                  {contract.is_overdue ? <OverdueBadge label={t('common.overdue')} /> : null}
                 </span>
                 <span className="col-start-2 row-start-2 flex min-w-0 flex-col text-xs text-muted-foreground lg:flex-row lg:gap-1">
                   <span className="truncate">
@@ -228,7 +228,7 @@ function ContractCostList({
             <span className="flex min-w-0 flex-col">
               <span className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-sm font-medium">{contract.name}</span>
-                {contract.is_overdue ? <OverdueBadge label={t('contracts.overdue')} /> : null}
+                {contract.is_overdue ? <OverdueBadge label={t('common.overdue')} /> : null}
               </span>
               <span className="text-muted-foreground flex flex-col text-xs">
                 <span className="truncate">

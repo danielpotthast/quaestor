@@ -89,7 +89,10 @@
       "6": "Sonntag"
     },
     "passwordTooWeak": "Passwort erfüllt nicht alle Anforderungen",
-    "noMatchingTransactions": "Keine Transaktionen passen zu deinen Filtern."
+    "noMatchingTransactions": "Keine Transaktionen passen zu deinen Filtern.",
+    "current": "Aktuell",
+    "overdue": "Überfällig",
+    "archived": "Archiviert"
   },
   "errors": {
     "serverOffline": {
@@ -512,7 +515,6 @@
     "checkFailed": "Update-Prüfung fehlgeschlagen"
   },
   "sessions": {
-    "currentBadge": "Aktuell",
     "lastUsed": "Zuletzt genutzt",
     "ip": "IP",
     "unknownUserAgent": "Unbekanntes Gerät",
@@ -803,8 +805,6 @@
     "selectAccount": "Konto wählen",
     "normalized": "Hochgerechnet",
     "nextExpected": "Nächste Zahlung",
-    "overdue": "Überfällig",
-    "overdueFilter": "Nur überfällige",
     "overdueBanner_one": "Die nächste Zahlung ist seit {{count}} Monat überfällig. Ist der Vertrag noch aktiv?",
     "overdueBanner_other": "Die nächste Zahlung ist seit {{count}} Monaten überfällig. Ist der Vertrag noch aktiv?",
     "members_one": "{{count}} Transaktion",
@@ -856,6 +856,13 @@
     "lastPayment": "Letzte Zahlung",
     "rename": "Vertrag Umbenennen",
     "renamed": "Vertrag umbenannt",
-    "deleteConfirm": "Löschen?"
+    "deleteConfirm": "Löschen?",
+    "archive": "Vertrag archivieren",
+    "unarchive": "Reaktivieren",
+    "unarchived": "Reaktiviert",
+    "statusLabel": "Status",
+    "statusOption": {
+      "active": "Aktiv"
+    }
   }
 }

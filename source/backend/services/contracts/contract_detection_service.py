@@ -231,6 +231,7 @@ def _find_or_create_contract(db_session: Session, account: Account, fingerprint:
         select(Contract).where(Contract.account_id == account.id).where(Contract.fingerprint == fingerprint)
     )
     if existing_contract is not None:
+        existing_contract.is_archived = False
         return existing_contract
 
     contract = Contract(

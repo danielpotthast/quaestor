@@ -8,6 +8,8 @@ import { z } from 'zod'
 import { useAuthMe, type CredentialRead } from '@/lib/auth'
 import {
   CONTRACT_FREQUENCY_FILTERS,
+  CONTRACT_OVERDUE_FILTERS,
+  CONTRACT_STATUS_FILTERS,
   filterContracts,
   useContracts,
   useCreateContract,
@@ -53,7 +55,8 @@ const contractFiltersSchema = z.object({
   amount_to: z.coerce.number().optional(),
   categories: oneOrMany(z.enum(TRANSACTION_CATEGORIES)).optional(),
   frequencies: oneOrMany(z.enum(CONTRACT_FREQUENCY_FILTERS)).optional(),
-  overdue: z.boolean().or(z.stringbool()).optional(),
+  overdue: oneOrMany(z.enum(CONTRACT_OVERDUE_FILTERS)).optional(),
+  status: oneOrMany(z.enum(CONTRACT_STATUS_FILTERS)).optional(),
   text: z.string().optional(),
   sort: z.enum(SORT_OPTIONS).optional(),
 })
@@ -98,9 +101,9 @@ function byString(a: string | null, b: string | null): number {
 
 function ContractsPage() {
   const { t } = useTranslation()
-  const { data: contracts } = useContracts()
-  const { data: user } = useAuthMe()
   const { sort = 'amount_asc', ...filters } = Route.useSearch()
+  const { data: contracts } = useContracts(true)
+  const { data: user } = useAuthMe()
   const navigate = useNavigate({ from: Route.fullPath })
 
   const credentials: CredentialRead[] = user?.credentials ?? []

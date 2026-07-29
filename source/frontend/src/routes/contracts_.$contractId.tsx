@@ -46,6 +46,13 @@ function ContractDetailPage() {
       onSaveNote={(note) =>
         update.mutateAsync({ name: query.data!.name, category: query.data!.category, note })
       }
+      onSetArchived={(archived) => {
+        toast.promise(update.mutateAsync({ name: query.data!.name, archived }), {
+          loading: t('common.saving'),
+          success: archived ? t('common.archived') : t('contracts.unarchived'),
+          error: t('errors.unexpected.title'),
+        })
+      }}
       onDelete={() => {
         toast.promise(onDelete(), {
           loading: t('common.saving'),
@@ -74,5 +81,6 @@ export interface ContractDetailViewProps {
   onChangeCategory: (category: TransactionCategory) => Promise<unknown>
   onChangeFrequency: (frequency: ContractFrequency | null) => Promise<unknown>
   onSaveNote: (note: string | null) => Promise<unknown>
+  onSetArchived: (archived: boolean) => void
   onDelete: () => void
 }

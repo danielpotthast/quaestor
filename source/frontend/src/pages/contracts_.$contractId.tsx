@@ -17,6 +17,7 @@ import { type TransactionCategory } from '@/lib/transaction'
 import { ContractTimeline } from '@/components/contract-timeline'
 import { NoteEditor } from '@/components/note-editor'
 import {
+  ArchiveContractButton,
   ContractNameInput,
   DeleteContractButton,
   RenameContractButton,
@@ -37,6 +38,7 @@ export function ContractDetailView({
   onChangeFrequency,
   onSaveNote,
   onDelete,
+  onSetArchived,
 }: ContractDetailViewProps) {
   const { t } = useTranslation()
   const [editingName, setEditingName] = useState(false)
@@ -76,6 +78,9 @@ export function ContractDetailView({
         <BackLink to="/contracts">{t('contracts.title')}</BackLink>
         <div className="flex items-center gap-1">
           <RenameContractButton disabled={editingName} onClick={() => setEditingName(true)} />
+          {contract.is_archived || contract.is_overdue ? (
+            <ArchiveContractButton archived={contract.is_archived} onToggle={onSetArchived} />
+          ) : null}
           <DeleteContractButton onConfirm={onDelete} isDeleting={isDeleting} />
         </div>
       </header>
@@ -92,9 +97,13 @@ export function ContractDetailView({
             <h1 className="text-foreground max-w-full truncate text-xl font-semibold">
               {contract.name}
             </h1>
-            {contract.is_overdue ? (
+            {contract.is_archived ? (
+              <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold">
+                {t('common.archived')}
+              </span>
+            ) : contract.is_overdue ? (
               <span className="bg-warning/10 text-warning shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold">
-                {t('contracts.overdue')}
+                {t('common.overdue')}
               </span>
             ) : null}
           </div>
@@ -124,20 +133,22 @@ export function ContractDetailView({
         </section>
       ) : null}
 
-      <dl className="border-border bg-card grid grid-cols-2 gap-3 rounded-lg border p-3">
-        <StripStat label={t('contracts.lastPayment')}>
-          {lastPaymentDate ? formatDateWithoutYear(lastPaymentDate) : <EmptyValue />}
-        </StripStat>
-        <StripStat label={t('contracts.nextExpected')} align="end">
-          {contract.expected_next_date ? (
-            <span className={cn(contract.is_overdue && 'text-warning')}>
-              {formatDateWithoutYear(contract.expected_next_date)}
-            </span>
-          ) : (
-            <EmptyValue />
-          )}
-        </StripStat>
-      </dl>
+      {contract.is_archived ? null : (
+        <dl className="border-border bg-card grid grid-cols-2 gap-3 rounded-lg border p-3">
+          <StripStat label={t('contracts.lastPayment')}>
+            {lastPaymentDate ? formatDateWithoutYear(lastPaymentDate) : <EmptyValue />}
+          </StripStat>
+          <StripStat label={t('contracts.nextExpected')} align="end">
+            {contract.expected_next_date ? (
+              <span className={cn(contract.is_overdue && 'text-warning')}>
+                {formatDateWithoutYear(contract.expected_next_date)}
+              </span>
+            ) : (
+              <EmptyValue />
+            )}
+          </StripStat>
+        </dl>
+      )}
 
       {projection ? (
         <section className="flex flex-col gap-2">

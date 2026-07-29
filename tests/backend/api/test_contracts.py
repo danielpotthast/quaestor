@@ -222,3 +222,23 @@ def test_contract_of_other_user_is_not_accessible(
     assert http_client.get(f"/api/contracts/{contract['id']}").status_code == 404
     assert http_client.get("/api/contracts").json() == []
     assert_log_contains(caplog, message="attempted to access <Contract(")
+
+
+def test_archiving_hides_contract_from_default_list_but_keeps_it_reachable(
+    http_client: TestClient, session_factory: sessionmaker
+):
+    account_id = setup_account(http_client=http_client, session_factory=session_factory)
+    contract = _create_contract(http_client, account_id=account_id)
+
+    archived = http_client.patch(f"/api/contracts/{contract['id']}", json={"name": "Gym", "archived": True})
+    assert archived.status_code == 200
+    assert archived.json()["is_archived"] is True
+
+    assert http_client.get("/api/contracts").json() == []
+    included = http_client.get("/api/contracts", params={"include_archived": True}).json()
+    assert [c["id"] for c in included] == [contract["id"]]
+    assert http_client.get(f"/api/contracts/{contract['id']}").json()["is_archived"] is True
+
+    unarchived = http_client.patch(f"/api/contracts/{contract['id']}", json={"name": "Gym", "archived": False})
+    assert unarchived.json()["is_archived"] is False
+    assert [c["id"] for c in http_client.get("/api/contracts").json()] == [contract["id"]]

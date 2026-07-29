@@ -23,6 +23,7 @@ class ContractUpdate(BaseModel):
     category: TransactionCategory | None = None
     note: str | None = None
     frequency: ContractFrequency | None = None
+    archived: bool | None = None
 
 
 class ContractMemberRead(TransactionRead):
@@ -44,6 +45,7 @@ class ContractRead(BaseModel):
     frequency: ContractFrequency | None
     interval_days: int | None
     expected_next_date: datetime.date | None
+    is_archived: bool = False
     is_overdue: bool = False
     member_count: int = 0
     amount_per_day: float | None = None

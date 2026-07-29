@@ -159,6 +159,7 @@ def _collect_overdue_notifications(db_session: Session, user: User, today: datet
         .join(Account, onclause=Contract.account_id == Account.id)
         .join(Credential, onclause=Account.credential_id == Credential.id)
         .where(Credential.user_id == user.id)
+        .where(Contract.is_archived.is_(False))
     ).all()
 
     notifications: list[Notification] = []
@@ -583,7 +584,7 @@ def _contract_amount_notifications(
     notifications = []
     for transaction in new_transactions:
         contract = transaction.contract
-        if contract is None or transaction.contract_assignment is ContractAssignment.EXCLUDED:
+        if contract is None or contract.is_archived or transaction.contract_assignment is ContractAssignment.EXCLUDED:
             continue
         if contract.median_amount is None or abs(transaction.amount) <= abs(contract.median_amount):
             continue
@@ -619,6 +620,8 @@ def _upcoming_fixed_costs(account: Account, today: datetime.date, lookahead: dat
     horizon = today + lookahead
     total = 0.0
     for contract in account.contracts:
+        if contract.is_archived:
+            continue
         amount = contract.median_amount
         due_date = contract.expected_next_date
         if amount is None or amount >= 0 or due_date is None:

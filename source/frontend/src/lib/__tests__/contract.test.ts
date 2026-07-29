@@ -22,6 +22,7 @@ function makeContract(overrides: Partial<ContractRead> = {}): ContractRead {
     frequency: 'MONTHLY',
     interval_days: 30,
     expected_next_date: null,
+    is_archived: false,
     is_overdue: false,
     member_count: 3,
     amount_per_day: null,
@@ -121,13 +122,23 @@ describe('filterContracts', () => {
     expect(ids(filterContracts(all, { account_ids: [10], categories: ['RENT'] }))).toEqual([3])
   })
 
-  it('filters to overdue contracts only when the overdue facet is on', () => {
+  it('filters by the overdue facet', () => {
     const overdueRent = makeContract({ id: 6, is_overdue: true })
     const pool = [...all, overdueRent]
-    expect(ids(filterContracts(pool, { overdue: true }))).toEqual([6])
-    // An absent/false overdue facet leaves everything untouched.
-    expect(ids(filterContracts(pool, { overdue: false }))).toEqual([1, 2, 3, 4, 5, 6])
+    expect(ids(filterContracts(pool, { overdue: ['OVERDUE'] }))).toEqual([6])
+    expect(ids(filterContracts(pool, { overdue: ['CURRENT'] }))).toEqual([1, 2, 3, 4, 5])
+    expect(ids(filterContracts(pool, { overdue: undefined }))).toEqual([1, 2, 3, 4, 5, 6])
     expect(ids(filterContracts(pool, {}))).toEqual([1, 2, 3, 4, 5, 6])
+  })
+
+  it('hides archived contracts by default, showing them only via the status facet', () => {
+    const archived = makeContract({ id: 6, is_archived: true })
+    const pool = [...all, archived]
+    expect(ids(filterContracts(pool, {}))).toEqual([1, 2, 3, 4, 5])
+    expect(ids(filterContracts(pool, { status: ['ARCHIVED'] }))).toEqual([6])
+    expect(ids(filterContracts(pool, { status: ['ACTIVE', 'ARCHIVED'] }))).toEqual([
+      1, 2, 3, 4, 5, 6,
+    ])
   })
 })
 
@@ -148,9 +159,10 @@ describe('hasActiveContractFilters', () => {
     expect(hasActiveContractFilters({ amount_from: 0 })).toBe(true)
   })
 
-  it('is true when the overdue facet is on, false when off', () => {
-    expect(hasActiveContractFilters({ overdue: true })).toBe(true)
-    expect(hasActiveContractFilters({ overdue: false })).toBe(false)
+  it('is true when the overdue or status facet is set', () => {
+    expect(hasActiveContractFilters({ overdue: ['OVERDUE'] })).toBe(true)
+    expect(hasActiveContractFilters({ status: ['ARCHIVED'] })).toBe(true)
+    expect(hasActiveContractFilters({ overdue: undefined })).toBe(false)
   })
 })
 

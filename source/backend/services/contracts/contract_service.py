@@ -36,16 +36,17 @@ def create_contract(db_session: Session, user: User, account_id: int, fields: di
     return contract
 
 
-def list_contracts_for_user(db_session: Session, user: User) -> list[Contract]:
-    contracts = list(
-        db_session.scalars(
-            select(Contract)
-            .join(Account, onclause=Contract.account_id == Account.id)
-            .join(Credential, onclause=Account.credential_id == Credential.id)
-            .where(Credential.user_id == user.id)
-            .order_by(Contract.created_at.desc())
-        )
+def list_contracts_for_user(db_session: Session, user: User, include_archived: bool = False) -> list[Contract]:
+    query = (
+        select(Contract)
+        .join(Account, onclause=Contract.account_id == Account.id)
+        .join(Credential, onclause=Account.credential_id == Credential.id)
+        .where(Credential.user_id == user.id)
+        .order_by(Contract.created_at.desc())
     )
+    if not include_archived:
+        query = query.where(Contract.is_archived.is_(False))
+    contracts = list(db_session.scalars(query))
     logger.debug(f"Found {len(contracts)} contract(s) for {user}")
     return contracts
 
@@ -76,6 +77,8 @@ def update_contract(db_session: Session, user: User, contract_id: int, fields: d
     if "frequency" in fields:
         contract.frequency = fields["frequency"]
         recompute_contract_stats(contract)
+    if "archived" in fields:
+        contract.is_archived = bool(fields["archived"])
     db_session.commit()
     logger.info(f"Updated {contract}")
     return contract
