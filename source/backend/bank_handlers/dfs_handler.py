@@ -121,8 +121,11 @@ class _DFSSession(BankSession):
                 transaction_type=_VORGANG_TO_TRANSACTION_TYPE.get(vorgang),
             )
         )
+        raw_anteile = raw_transaction.get("anteile")
+        if raw_anteile is None:
+            return  # freshly booked contributions have no units/price yet; a later sync fills them in
         kaufdatum = epoch_ms_to_date(raw_transaction.get("kaufdatum") or raw_transaction["belegdatum"])
-        anteile = sign * parse_german_decimal(raw_transaction["anteile"])
+        anteile = sign * parse_german_decimal(raw_anteile)
         self._accounts[fund_name]["units_moves"].append((kaufdatum, anteile))
 
     def _load_kurse_series(self, modell_key: str) -> None:

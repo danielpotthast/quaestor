@@ -250,6 +250,27 @@ def test_transactions_naming_unknown_fund_are_skipped(monkeypatch: pytest.Monkey
     assert "Ghost Fund" not in {account.name for account in session.get_accounts()}
 
 
+def test_transactions_without_anteile_are_recorded_but_move_no_units(monkeypatch: pytest.MonkeyPatch):
+    transactions = json.loads(json.dumps(TRANSACTIONS))
+    transactions["daten"]["grid"]["dataSource"].append(
+        {
+            "anlage": "Stock A",
+            "belegdatum": str(LATEST_DATE_MS),
+            "betrag": "5",
+            "vorgang": "Einzahlung",
+            "lohnart": "Gebühr",
+        }
+    )
+    patch_session(monkeypatch=monkeypatch, fake=FakeSession(transactions_data=transactions))
+    session = dfs_session()
+
+    transactions = session.get_transactions(FetchedAccount(name="Stock A"), start_date=OLDER_DATE)
+    assert any(t.amount == 5.0 and t.date == LATEST_DATE for t in transactions)
+    # No unit move added, so the value history is unchanged (still 3 -> 4 units).
+    history = session.get_market_value_history(FetchedAccount(name="Stock A"))
+    assert [observation.amount for observation in history] == [105.0, 60.0, 400.0]
+
+
 def test_get_market_value_history_logs_debug_summary(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture):
     patch_session(monkeypatch=monkeypatch, fake=FakeSession())
     session = dfs_session()
