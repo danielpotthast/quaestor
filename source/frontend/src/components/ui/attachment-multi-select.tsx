@@ -1,11 +1,16 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
-import { FileX, ListFilter, Paperclip } from 'lucide-react'
+import { FileX, Paperclip } from 'lucide-react'
 
-import { SingleSelectPopover } from '@/components/ui/single-select-popover'
+import type { MultiSelectOption } from '@/components/ui/multi-select-popover'
+import {
+  TwoOptionMultiSelect,
+  scalarToSelection,
+  selectionToScalar,
+} from '@/components/ui/two-option-multi-select'
 
-export type AttachmentFilter = 'with' | 'without'
+export type AttachmentFilter = 'with' | 'without' | 'none'
 
 export interface AttachmentMultiSelectProps {
   id?: string
@@ -23,31 +28,29 @@ export function AttachmentMultiSelect({
   const { t } = useTranslation()
 
   const iconClass = 'text-muted-foreground size-4 shrink-0'
-  const options = [
+  const options: MultiSelectOption<'with' | 'without'>[] = [
     {
-      value: 'any' as const,
-      label: t('common.any'),
-      leading: <ListFilter className={iconClass} aria-hidden="true" />,
-    },
-    {
-      value: 'with' as const,
+      value: 'with',
       label: t('filters.attachment.with'),
       leading: <Paperclip className={iconClass} aria-hidden="true" />,
     },
     {
-      value: 'without' as const,
+      value: 'without',
       label: t('filters.attachment.without'),
       leading: <FileX className={iconClass} aria-hidden="true" />,
     },
   ]
 
+  const all = options.map((option) => option.value)
+
   return (
-    <SingleSelectPopover
+    <TwoOptionMultiSelect
       id={id}
       ariaLabel={t('filters.attachmentLabel')}
       options={options}
-      value={value ?? 'any'}
-      onChange={(next) => onChange(next === 'any' ? undefined : next)}
+      selected={scalarToSelection(value, all)}
+      onChange={(next) => onChange(selectionToScalar(next, all.length))}
+      checkboxIdPrefix="attachment"
       className={className}
     />
   )

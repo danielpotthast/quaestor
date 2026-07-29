@@ -130,11 +130,7 @@ describe('TransactionSearchView — form', () => {
     const { onChange } = renderView()
 
     await user.click(screen.getByLabelText('Transfer'))
-    await user.click(
-      within(screen.getByRole('list', { name: 'Transfer' })).getByRole('button', {
-        name: 'Transfer',
-      }),
-    )
+    await user.click(document.getElementById('transfer-unlinked')!)
 
     await waitFor(() => expect(lastPayload(onChange)?.filters.linked).toBe('linked'))
   })

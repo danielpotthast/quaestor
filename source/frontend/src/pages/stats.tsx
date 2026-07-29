@@ -151,7 +151,10 @@ export function StatsView({
   const typeFilters: StatsTypeFilters = { transaction_types: typesParam, linked }
 
   const hasSelection =
-    accountIds.length > 0 && selectedCategories.length > 0 && selectedTypes.length > 0
+    accountIds.length > 0 &&
+    selectedCategories.length > 0 &&
+    selectedTypes.length > 0 &&
+    linked !== 'none'
 
   const openSearch = (extra: { categories?: TransactionCategory[]; text?: string }) =>
     onOpenSearch({

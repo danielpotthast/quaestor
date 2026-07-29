@@ -1,7 +1,7 @@
 import datetime
 from dataclasses import dataclass
 
-from sqlalchemy import ColumnElement, case, func, select
+from sqlalchemy import ColumnElement, case, false, func, select
 from sqlalchemy.orm import Session
 
 from source.backend.api.schemas.transactions.statistics import (
@@ -65,8 +65,10 @@ def _base_conditions(
     if linked is not None:
         if linked == "linked":
             conditions.append(Transaction.transfer_counterpart_id.isnot(None))
-        else:
+        elif linked == "unlinked":
             conditions.append(Transaction.transfer_counterpart_id.is_(None))
+        else:
+            conditions.append(false())
     return conditions
 
 

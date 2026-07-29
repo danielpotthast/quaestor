@@ -62,7 +62,9 @@ export function TransactionSearchView({
   const hasSelection =
     accountIds.length > 0 &&
     debouncedDraft.categories?.length !== 0 &&
-    debouncedDraft.transaction_types?.length !== 0
+    debouncedDraft.transaction_types?.length !== 0 &&
+    debouncedDraft.linked !== 'none' &&
+    debouncedDraft.has_attachment !== 'none'
 
   useEffect(() => {
     onChange({ accountIds, filters: debouncedDraft })

@@ -30,7 +30,7 @@ export interface StatsFilters {
   date_to?: string
 }
 
-export type StatsLinked = 'linked' | 'unlinked'
+export type StatsLinked = 'linked' | 'unlinked' | 'none'
 
 export interface StatsTypeFilters {
   transaction_types?: TransactionType[]

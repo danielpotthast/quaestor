@@ -6,8 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from source.backend.models.transactions.transaction_category import TransactionCategory
 from source.backend.models.transactions.transaction_type import TransactionType
 
-StatisticsLinked = Literal["linked", "unlinked"]
-HasAttachment = Literal["with", "without"]
+StatisticsLinked = Literal["linked", "unlinked", "none"]
+HasAttachment = Literal["with", "without", "none"]
 
 
 class TransactionRead(BaseModel):

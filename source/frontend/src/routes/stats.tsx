@@ -28,7 +28,7 @@ const searchParamsSchema = z.object({
   count_group: z.enum(['day', 'week', 'month', 'weekday']).optional(),
   direction: z.enum(['INCOMING', 'OUTGOING']).optional(),
   transaction_types: oneOrMany(z.enum(TRANSACTION_TYPES)).optional(),
-  linked: z.enum(['linked', 'unlinked', 'any']).optional(),
+  linked: z.enum(['linked', 'unlinked', 'any', 'none']).optional(),
   account_ids: oneOrMany(z.coerce.number()).optional(),
   categories: oneOrMany(z.enum(TRANSACTION_CATEGORIES)).optional(),
   hidden_categories: oneOrMany(hiddenCategorySchema).optional(),
@@ -67,7 +67,11 @@ function StatsPage() {
                 ? undefined
                 : next.transactionTypes,
             linked:
-              next.linked === undefined ? 'any' : next.linked === 'unlinked' ? undefined : 'linked',
+              next.linked === undefined
+                ? 'any'
+                : next.linked === 'unlinked'
+                  ? undefined
+                  : next.linked,
             categories:
               next.categories.length === FILTERABLE_CATEGORIES.length ? undefined : next.categories,
             hidden_categories: next.hiddenCategories.length ? next.hiddenCategories : undefined,

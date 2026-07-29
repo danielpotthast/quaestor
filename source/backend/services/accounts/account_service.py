@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import false, func, select
 from sqlalchemy.orm import Session
 
 from source.backend.bank_handlers import BankProvider
@@ -452,12 +452,19 @@ def get_filtered_transactions_for_user(
     if (linked := filter_parameters.get("linked")) is not None:
         if linked == "linked":
             query = query.where(Transaction.transfer_counterpart_id.isnot(None))
-        else:
+        elif linked == "unlinked":
             query = query.where(Transaction.transfer_counterpart_id.is_(None))
+        else:
+            query = query.where(false())
 
     if (has_attachment := filter_parameters.get("has_attachment")) is not None:
         exists = Transaction.attachments.any()
-        query = query.where(exists if has_attachment == "with" else ~exists)
+        if has_attachment == "with":
+            query = query.where(exists)
+        elif has_attachment == "without":
+            query = query.where(~exists)
+        else:
+            query = query.where(false())
 
     query = query.order_by(Transaction.date.desc()).order_by(Transaction.id.desc())
 

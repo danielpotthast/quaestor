@@ -13,8 +13,8 @@ export interface TransactionFilters {
   date_to?: string
   transaction_types?: TransactionType[]
   categories?: TransactionCategory[]
-  linked?: 'linked' | 'unlinked'
-  has_attachment?: 'with' | 'without'
+  linked?: 'linked' | 'unlinked' | 'none'
+  has_attachment?: 'with' | 'without' | 'none'
 }
 
 export function buildFilterQueryString(accountIds: number[], filters: TransactionFilters): string {

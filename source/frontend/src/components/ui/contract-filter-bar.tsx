@@ -22,7 +22,8 @@ import { FrequencyMultiSelect } from '@/components/ui/frequency-multi-select'
 import { FilterHeading } from '@/components/ui/filter-heading'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MultiSelectPopover, type MultiSelectOption } from '@/components/ui/multi-select-popover'
+import type { MultiSelectOption } from '@/components/ui/multi-select-popover'
+import { TwoOptionMultiSelect } from '@/components/ui/two-option-multi-select'
 
 export interface ContractFilterBarProps {
   credentials: CredentialRead[]
@@ -64,14 +65,6 @@ function ContractFilterBar({ credentials, filters, onChange }: ContractFilterBar
     },
     { value: 'ARCHIVED', label: t('common.archived'), leading: <Archive className={iconClass} /> },
   ]
-  const twoOptionLabel = <T extends string>(
-    selected: T[],
-    options: MultiSelectOption<T>[],
-  ): string => {
-    if (selected.length === 0) return t('search.selectNone')
-    if (selected.length >= options.length) return t('common.any')
-    return options.find((option) => option.value === selected[0])?.label ?? ''
-  }
   const statusEqualsDefault = (next: ContractStatusFilter[]): boolean =>
     next.length === DEFAULT_CONTRACT_STATUS.length && next.every((value) => value === 'ACTIVE')
 
@@ -136,34 +129,26 @@ function ContractFilterBar({ credentials, filters, onChange }: ContractFilterBar
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="contract-filter-overdue">{t('common.overdue')}</Label>
-            <MultiSelectPopover
+            <TwoOptionMultiSelect
               id="contract-filter-overdue"
               ariaLabel={t('common.overdue')}
               checkboxIdPrefix="contract-overdue"
+              options={overdueOptions}
               selected={filters.overdue ?? [...CONTRACT_OVERDUE_FILTERS]}
               onChange={(next) =>
                 update('overdue', normalize(next, CONTRACT_OVERDUE_FILTERS.length))
               }
-              triggerLabel={twoOptionLabel(
-                filters.overdue ?? [...CONTRACT_OVERDUE_FILTERS],
-                overdueOptions,
-              )}
-              options={overdueOptions}
             />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="contract-filter-status">{t('contracts.statusLabel')}</Label>
-            <MultiSelectPopover
+            <TwoOptionMultiSelect
               id="contract-filter-status"
               ariaLabel={t('contracts.statusLabel')}
               checkboxIdPrefix="contract-status"
+              options={statusOptions}
               selected={filters.status ?? DEFAULT_CONTRACT_STATUS}
               onChange={(next) => update('status', statusEqualsDefault(next) ? undefined : next)}
-              triggerLabel={twoOptionLabel(
-                filters.status ?? DEFAULT_CONTRACT_STATUS,
-                statusOptions,
-              )}
-              options={statusOptions}
             />
           </div>
         </div>

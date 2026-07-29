@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -160,8 +160,7 @@ describe('StatsView', () => {
     const { onChange } = renderView({ linked: 'any' })
 
     await user.click(screen.getByLabelText('Transfer'))
-    const list = screen.getByRole('list', { name: 'Transfer' })
-    await user.click(within(list).getByRole('button', { name: 'Transfer' }))
+    await user.click(document.getElementById('transfer-unlinked')!)
 
     expect(onChange.mock.calls.at(-1)?.[0].linked).toBe('linked')
   })
@@ -176,8 +175,7 @@ describe('StatsView', () => {
     const { onChange } = renderView() // default: only "No transfer"
 
     await user.click(screen.getByLabelText('Transfer'))
-    const list = screen.getByRole('list', { name: 'Transfer' })
-    await user.click(within(list).getByRole('button', { name: 'Any' }))
+    await user.click(document.getElementById('transfer-linked')!)
 
     expect(onChange.mock.calls.at(-1)?.[0].linked).toBeUndefined()
   })

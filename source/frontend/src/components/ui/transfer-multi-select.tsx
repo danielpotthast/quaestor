@@ -1,11 +1,16 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
-import { ArrowLeftRight, ListFilter, Unlink } from 'lucide-react'
+import { ArrowLeftRight, Unlink } from 'lucide-react'
 
-import { SingleSelectPopover } from '@/components/ui/single-select-popover'
+import type { MultiSelectOption } from '@/components/ui/multi-select-popover'
+import {
+  TwoOptionMultiSelect,
+  scalarToSelection,
+  selectionToScalar,
+} from '@/components/ui/two-option-multi-select'
 
-export type TransferFilter = 'linked' | 'unlinked'
+export type TransferFilter = 'linked' | 'unlinked' | 'none'
 
 export interface TransferMultiSelectProps {
   id?: string
@@ -18,31 +23,29 @@ export function TransferMultiSelect({ id, value, onChange, className }: Transfer
   const { t } = useTranslation()
 
   const iconClass = 'text-muted-foreground size-4 shrink-0'
-  const options = [
+  const options: MultiSelectOption<'linked' | 'unlinked'>[] = [
     {
-      value: 'any' as const,
-      label: t('common.any'),
-      leading: <ListFilter className={iconClass} aria-hidden="true" />,
-    },
-    {
-      value: 'linked' as const,
+      value: 'linked',
       label: t('filters.transferLabel'),
       leading: <ArrowLeftRight className={iconClass} aria-hidden="true" />,
     },
     {
-      value: 'unlinked' as const,
+      value: 'unlinked',
       label: t('filters.transfer.unlinked'),
       leading: <Unlink className={iconClass} aria-hidden="true" />,
     },
   ]
 
+  const all = options.map((option) => option.value)
+
   return (
-    <SingleSelectPopover
+    <TwoOptionMultiSelect
       id={id}
       ariaLabel={t('filters.transferLabel')}
       options={options}
-      value={value ?? 'any'}
-      onChange={(next) => onChange(next === 'any' ? undefined : next)}
+      selected={scalarToSelection(value, all)}
+      onChange={(next) => onChange(selectionToScalar(next, all.length))}
+      checkboxIdPrefix="transfer"
       className={className}
     />
   )
