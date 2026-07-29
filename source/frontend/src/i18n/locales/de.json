@@ -694,6 +694,7 @@
     },
     "runway": {
       "title": "Finanzieller Puffer",
+      "info": "Die Kategorien {{categories}} werden nicht mitgerechnet.",
       "remaining": "Verbleibend",
       "monthsUnit": "Monate",
       "infinite": "∞",

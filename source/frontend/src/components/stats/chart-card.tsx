@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 export interface ChartCardProps {
   title: string
   icon?: ReactNode
+  info?: ReactNode
   isLoading: boolean
   isError: boolean
   isEmpty: boolean
@@ -15,6 +16,7 @@ export interface ChartCardProps {
 export function ChartCard({
   title,
   icon,
+  info,
   isLoading,
   isError,
   isEmpty,
@@ -31,7 +33,10 @@ export function ChartCard({
           {icon}
           {title}
         </h2>
-        {action}
+        <div className="flex items-center gap-2">
+          {action}
+          {info}
+        </div>
       </header>
       {isLoading ? (
         <p className="text-muted-foreground text-sm">{t('common.loading')}</p>

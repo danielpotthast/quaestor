@@ -189,14 +189,26 @@ describe('averageMonthlyExpenses', () => {
     expenses,
   })
 
-  it('averages the expenses across the returned months', () => {
-    expect(
-      averageMonthlyExpenses([
-        month('2026-01', 1000),
-        month('2026-02', 2000),
-        month('2026-03', 3000),
-      ]),
-    ).toBe(2000)
+  it('normalises the range total by its actual length in months', () => {
+    const result = averageMonthlyExpenses(
+      [month('2026-01', 1000), month('2026-02', 2000), month('2026-03', 3000)],
+      '2026-01-01',
+      '2026-03-31',
+    )
+    expect(result).toBeCloseTo(2029.2, 1)
+  })
+
+  it('counts a month-straddling one-month range as one month, not two buckets', () => {
+    const result = averageMonthlyExpenses(
+      [month('2026-06', 3000), month('2026-07', 2000)],
+      '2026-06-29',
+      '2026-07-29',
+    )
+    expect(result).toBeCloseTo(4909.3, 1)
+  })
+
+  it('falls back to bucket count without a range', () => {
+    expect(averageMonthlyExpenses([month('2026-01', 1000), month('2026-02', 3000)])).toBe(2000)
   })
 
   it('returns 0 for no months', () => {

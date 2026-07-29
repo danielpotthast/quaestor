@@ -694,6 +694,7 @@
     },
     "runway": {
       "title": "Runway",
+      "info": "The categories {{categories}} aren't included.",
       "remaining": "Remaining",
       "monthsUnit": "months",
       "infinite": "∞",

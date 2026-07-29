@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import {
+  differenceInCalendarDays,
   eachDayOfInterval,
   eachMonthOfInterval,
   eachWeekOfInterval,
@@ -38,7 +39,8 @@ export interface StatsTypeFilters {
 
 export const FILTERABLE_CATEGORIES: TransactionCategory[] = [...TRANSACTION_CATEGORIES]
 
-// Response shapes — mirror source/backend/api/schemas/statistics.py.
+export const RUNWAY_EXCLUDED_CATEGORIES: TransactionCategory[] = ['INVESTMENT', 'SAVINGS']
+
 export interface CategorySlice {
   category: TransactionCategory
   total: number
@@ -50,9 +52,19 @@ export interface MonthlyCashflow {
   expenses: number
 }
 
-export function averageMonthlyExpenses(cashflow: MonthlyCashflow[]): number {
-  if (cashflow.length === 0) return 0
-  return cashflow.reduce((sum, month) => sum + month.expenses, 0) / cashflow.length
+const DAYS_PER_MONTH = 365.25 / 12
+
+export function averageMonthlyExpenses(
+  cashflow: MonthlyCashflow[],
+  dateFrom?: string,
+  dateTo?: string,
+): number {
+  const total = cashflow.reduce((sum, month) => sum + month.expenses, 0)
+  if (dateFrom && dateTo) {
+    const days = differenceInCalendarDays(parseISO(dateTo), parseISO(dateFrom)) + 1
+    if (days > 0) return total / (days / DAYS_PER_MONTH)
+  }
+  return cashflow.length > 0 ? total / cashflow.length : 0
 }
 
 export function averageMonthlyIncome(cashflow: MonthlyCashflow[]): number {

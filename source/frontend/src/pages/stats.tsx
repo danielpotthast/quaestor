@@ -275,7 +275,14 @@ export function StatsView({
         <>
           <ContractsSummaryCard accountIds={accountIds} categories={categoriesParam} />
 
-          <RunwayCard credentials={credentials} accountIds={accountIds} cashflow={cashflow.data} />
+          <RunwayCard
+            credentials={credentials}
+            accountIds={accountIds}
+            filters={filters}
+            categories={selectedCategories}
+            typeFilters={typeFilters}
+            enabled={hasSelection}
+          />
 
           <ChartCard
             title={t('stats.netWorth.title')}
