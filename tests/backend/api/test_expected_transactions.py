@@ -5,9 +5,17 @@ from sqlalchemy.orm import sessionmaker
 from tests.backend.conftest import (
     persist_transaction,
     register,
+    register_and_login,
     setup_account,
     setup_manual_account,
 )
+
+_ENDPOINTS = [
+    ("POST", "", {"amount": 10.0, "match_tolerance_percent": 0}),
+    ("GET", "", None),
+    ("PATCH", "/1", {"amount": 10.0, "match_tolerance_percent": 0}),
+    ("DELETE", "/1", None),
+]
 
 
 def test_create_expected_transaction_returns_201_with_fields(http_client: TestClient, session_factory: sessionmaker):
@@ -182,3 +190,39 @@ def test_search_includes_pending_but_not_expected_transactions(http_client: Test
 
     assert response.status_code == 200
     assert {row["id"] for row in response.json()} == {booked_id, pending_id}
+
+
+@pytest.mark.parametrize(argnames="method, path_suffix, json_body", argvalues=_ENDPOINTS)
+def test_expected_transactions_reject_other_users_account(
+    http_client: TestClient,
+    session_factory: sessionmaker,
+    method: str,
+    path_suffix: str,
+    json_body: dict | None,
+):
+    account_id = setup_account(http_client=http_client, session_factory=session_factory)
+    register_and_login(http_client, user_name="intruder")
+
+    response = http_client.request(
+        method=method,
+        url=f"/api/account/{account_id}/expected-transactions{path_suffix}",
+        json=json_body,
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize(argnames="method, path_suffix, json_body", argvalues=_ENDPOINTS)
+def test_expected_transactions_require_authentication(
+    http_client: TestClient,
+    method: str,
+    path_suffix: str,
+    json_body: dict | None,
+):
+    response = http_client.request(
+        method=method,
+        url=f"/api/account/1/expected-transactions{path_suffix}",
+        json=json_body,
+    )
+
+    assert response.status_code == 401
