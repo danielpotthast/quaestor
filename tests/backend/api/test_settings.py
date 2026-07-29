@@ -49,7 +49,3 @@ def test_settings_reflects_env_variables(http_client: TestClient, monkeypatch: p
         "allowed_attachment_extensions": sorted(attachment_service.ALLOWED_EXTENSIONS),
         "max_attachment_size_mb": 5,
     }
-
-
-def test_settings_is_public(http_client: TestClient):
-    assert http_client.get("/api/settings").status_code == 200

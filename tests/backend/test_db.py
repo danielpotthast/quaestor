@@ -70,52 +70,39 @@ def test_get_session_returns_real_session_instances():
         engine.dispose()
 
 
-def test_log_database_location_announces_a_missing_database(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-):
-    monkeypatch.setattr(target=db, name="DATABASE_PATH", value=tmp_path / "does-not-exist.db")
-    monkeypatch.setattr(target=db, name="_running_in_container", value=lambda: False)
-
-    db.log_database_location()
-
-    assert_log_contains(caplog, messages=["Using database at", "No existing database found at"])
-
-
-def test_log_database_location_stays_quiet_about_a_missing_database_when_it_exists(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+@pytest.mark.parametrize(
+    argnames="db_exists, in_container, ismount, present, absent",
+    argvalues=[
+        (False, False, None, ["Using database at", "No existing database found at"], []),
+        (True, False, None, ["Using database at"], ["No existing database found at"]),
+        (False, True, False, ["No volume or bind mount was detected for the database"], []),
+        (False, False, None, [], ["No volume or bind mount"]),
+    ],
+)
+def test_log_database_location(
+    db_exists: bool,
+    in_container: bool,
+    ismount: bool | None,
+    present: list[str],
+    absent: list[str],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ):
     database_path = tmp_path / "quaestor.db"
-    database_path.touch()
+    if db_exists:
+        database_path.touch()
     monkeypatch.setattr(target=db, name="DATABASE_PATH", value=database_path)
-    monkeypatch.setattr(target=db, name="_running_in_container", value=lambda: False)
+    monkeypatch.setattr(target=db, name="_running_in_container", value=lambda: in_container)
+    if ismount is not None:
+        monkeypatch.setattr(target=db.os.path, name="ismount", value=lambda path: ismount)
 
     db.log_database_location()
 
-    assert_log_contains(caplog, message="Using database at")
-    assert_log_contains(caplog, message="No existing database found at", negate=True)
-
-
-def test_log_database_location_warns_when_the_database_is_not_on_a_volume(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-):
-    monkeypatch.setattr(target=db, name="DATABASE_PATH", value=tmp_path / "quaestor.db")
-    monkeypatch.setattr(target=db, name="_running_in_container", value=lambda: True)
-    monkeypatch.setattr(target=db.os.path, name="ismount", value=lambda path: False)
-
-    db.log_database_location()
-
-    assert_log_contains(caplog, message="No volume or bind mount was detected for the database")
-
-
-def test_log_database_location_does_not_warn_outside_a_container(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-):
-    monkeypatch.setattr(target=db, name="DATABASE_PATH", value=tmp_path / "quaestor.db")
-    monkeypatch.setattr(target=db, name="_running_in_container", value=lambda: False)
-
-    db.log_database_location()
-
-    assert_log_contains(caplog, message="No volume or bind mount", negate=True)
+    for message in present:
+        assert_log_contains(caplog, message=message)
+    for message in absent:
+        assert_log_contains(caplog, message=message, negate=True)
 
 
 def test_close_engine_disposes_and_logs(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture):

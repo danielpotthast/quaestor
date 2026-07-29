@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from tests.backend.conftest import (
@@ -36,19 +37,13 @@ def test_user_cannot_modify_or_delete_other_users_credential(http_client: TestCl
     assert http_client.delete(f"/api/credentials/{credential_id}").status_code == 404
 
 
-def test_user_cannot_delete_other_users_account(http_client: TestClient):
+@pytest.mark.parametrize(
+    argnames=("method", "json_body"), argvalues=[("DELETE", None), ("PATCH", {"display_name": "Hacked"})]
+)
+def test_user_cannot_modify_other_users_account(http_client: TestClient, method: str, json_body: dict | None):
     first_user_id = register_and_get_id(http_client, user_name=USER_NAME)
     register_and_login(http_client, user_name="other")
 
-    response = http_client.delete(f"/api/users/{first_user_id}")
-
-    assert response.status_code == 404
-
-
-def test_user_cannot_patch_other_users_account(http_client: TestClient):
-    first_user_id = register_and_get_id(http_client, user_name=USER_NAME)
-    register_and_login(http_client, user_name="other")
-
-    response = http_client.patch(f"/api/users/{first_user_id}", json={"display_name": "Hacked"})
+    response = http_client.request(method=method, url=f"/api/users/{first_user_id}", json=json_body)
 
     assert response.status_code == 404

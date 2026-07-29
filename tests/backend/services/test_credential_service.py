@@ -33,26 +33,24 @@ from tests.backend.conftest import (
 )
 
 
-def test_validated_credentials_rejects_unexpected_fields(caplog: pytest.LogCaptureFixture):
-    with pytest.raises(MissingCredentialFieldError, match="Unexpected field"):
-        credential_service._validate_credentials(
-            bank=BankProvider.FINTS,
-            credentials={
-                "username": BANK_USERNAME,
-                "password": BANK_PASSWORD,
-                "blz": "50010517",
-                "bonus_field": "x",
-            },
-        )
+@pytest.mark.parametrize(
+    argnames=("credentials", "expected_match", "expected_log"),
+    argvalues=[
+        (
+            {"username": BANK_USERNAME, "password": BANK_PASSWORD, "blz": "50010517", "bonus_field": "x"},
+            "Unexpected field",
+            "Unexpected field(s) for",
+        ),
+        ({"username": BANK_USERNAME}, "Missing required field", "Missing required field(s) for"),
+    ],
+)
+def test_validated_credentials_rejects_invalid_fints_field_set(
+    caplog: pytest.LogCaptureFixture, credentials: dict, expected_match: str, expected_log: str
+):
+    with pytest.raises(MissingCredentialFieldError, match=expected_match):
+        credential_service._validate_credentials(bank=BankProvider.FINTS, credentials=credentials)
 
-    assert_log_contains(caplog, message="Unexpected field(s) for")
-
-
-def test_validated_credentials_rejects_missing_required_field(caplog: pytest.LogCaptureFixture):
-    with pytest.raises(MissingCredentialFieldError, match="Missing required field"):
-        credential_service._validate_credentials(bank=BankProvider.FINTS, credentials={"username": BANK_USERNAME})
-
-    assert_log_contains(caplog, message="Missing required field(s) for")
+    assert_log_contains(caplog, message=expected_log)
 
 
 def test_validate_credentials_strips_whitespace_for_trade_republic():
@@ -63,23 +61,22 @@ def test_validate_credentials_strips_whitespace_for_trade_republic():
     assert cleaned == {"phone": "+491512345", "pin": PIN}
 
 
-@pytest.mark.parametrize(argnames="phone_number", argvalues=["491512345", "01512345"])
-def test_validate_credentials_rejects_phone_without_country_code(phone_number: str):
+@pytest.mark.parametrize(
+    argnames=("credentials", "expected_log"),
+    argvalues=[
+        ({"phone": "491512345", "pin": PIN}, None),
+        ({"phone": "01512345", "pin": PIN}, None),
+        ({"phone": PHONE_NUMBER, "pin": "12"}, "The pin must"),
+    ],
+)
+def test_validate_credentials_rejects_invalid_trade_republic_field(
+    caplog: pytest.LogCaptureFixture, credentials: dict, expected_log: str | None
+):
     with pytest.raises(InvalidCredentialFieldError):
-        credential_service._validate_credentials(
-            bank=BankProvider.TRADE_REPUBLIC,
-            credentials={"phone": phone_number, "pin": PIN},
-        )
+        credential_service._validate_credentials(bank=BankProvider.TRADE_REPUBLIC, credentials=credentials)
 
-
-def test_validate_credentials_rejects_pin_that_is_not_four_digits(caplog: pytest.LogCaptureFixture):
-    with pytest.raises(InvalidCredentialFieldError):
-        credential_service._validate_credentials(
-            bank=BankProvider.TRADE_REPUBLIC,
-            credentials={"phone": PHONE_NUMBER, "pin": "12"},
-        )
-
-    assert_log_contains(caplog, message="The pin must")
+    if expected_log:
+        assert_log_contains(caplog, message=expected_log)
 
 
 def test_validate_credentials_strips_whitespace_from_fints_blz():

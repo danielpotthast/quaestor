@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from statistics import median
 
 import pytest
@@ -31,53 +31,33 @@ def test_no_stats_means_no_outlier():
     assert not contract.is_outlier(_create_transaction_from_amount(999.0))
 
 
-def test_contract_without_expected_date_is_never_overdue():
-    contract = Contract(expected_next_date=None)
+@pytest.mark.parametrize(
+    argnames="expected_next_date, offset_days, expected",
+    argvalues=[
+        (None, 0, False),
+        (LATEST_DATE, 0, False),
+        (LATEST_DATE, OVERDUE_GRACE_DAYS, False),
+        (LATEST_DATE, OVERDUE_GRACE_DAYS + 1, True),
+    ],
+)
+def test_is_overdue_on(expected_next_date: date | None, offset_days: int, expected: bool):
+    contract = Contract(expected_next_date=expected_next_date)
 
-    assert not contract.is_overdue_on(today=LATEST_DATE)
-
-
-def test_contract_within_grace_period_is_not_overdue():
-    contract = Contract(expected_next_date=LATEST_DATE)
-
-    assert not contract.is_overdue_on(today=LATEST_DATE)
-    assert not contract.is_overdue_on(today=LATEST_DATE + timedelta(days=OVERDUE_GRACE_DAYS))
-
-
-def test_contract_past_grace_period_is_overdue():
-    contract = Contract(expected_next_date=LATEST_DATE)
-
-    assert contract.is_overdue_on(today=LATEST_DATE + timedelta(days=OVERDUE_GRACE_DAYS + 1)) is True
+    assert contract.is_overdue_on(today=LATEST_DATE + timedelta(days=offset_days)) is expected
 
 
-def test_absolute_floor_governs_stable_small_amounts():
-    amounts = [-46.49, -44.99, -44.99, -44.99]
-
-    assert _get_outliers_from_amounts(amounts) == [-46.49]
-
-
-def test_sub_floor_deviation_is_treated_as_noise():
-    amounts = [-30.06, -29.99, -30.74, -29.99]
-
-    assert _get_outliers_from_amounts(amounts) == []
-
-
-def test_relative_cap_catches_outliers_in_small_high_value_sample():
-    amounts = [2189.44, 4224.79, 5705.53]
-
-    assert sorted(_get_outliers_from_amounts(amounts)) == [2189.44, 5705.53]
-
-
-def test_relative_cap_does_not_flag_moderate_variation():
-    amounts = [4000.0, 4200.0, 4400.0, 3800.0]
-
-    assert _get_outliers_from_amounts(amounts) == []
-
-
-def test_clear_outlier_in_consistent_series_is_flagged():
-    amounts = [2000.0, 2000.0, 3000.0, 2000.0]
-
-    assert _get_outliers_from_amounts(amounts) == [3000.0]
+@pytest.mark.parametrize(
+    argnames="amounts, expected_outliers",
+    argvalues=[
+        ([-46.49, -44.99, -44.99, -44.99], [-46.49]),
+        ([-30.06, -29.99, -30.74, -29.99], []),
+        ([2189.44, 4224.79, 5705.53], [2189.44, 5705.53]),
+        ([4000.0, 4200.0, 4400.0, 3800.0], []),
+        ([2000.0, 2000.0, 3000.0, 2000.0], [3000.0]),
+    ],
+)
+def test_get_outliers_from_amounts(amounts: list[float], expected_outliers: list[float]):
+    assert sorted(_get_outliers_from_amounts(amounts)) == expected_outliers
 
 
 @pytest.mark.parametrize(argnames="amount", argvalues=[4224.79, 4500.0, 3900.0])

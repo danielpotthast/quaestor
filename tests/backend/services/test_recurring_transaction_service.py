@@ -42,39 +42,31 @@ def _freeze_today(monkeypatch: pytest.MonkeyPatch, today_value: date) -> None:
 # --- date math -------------------------------------------------------------
 
 
-def test_next_monthly_returns_same_month_when_day_still_ahead():
-    assert recurring_transaction_service.next_monthly(from_date=_d("2026-06-06"), day=15) == _d("2026-06-15")
+@pytest.mark.parametrize(
+    argnames=("from_date", "day", "after", "expected"),
+    argvalues=[
+        (_d("2026-06-06"), 15, False, _d("2026-06-15")),  # same month when day still ahead
+        (_d("2026-06-20"), 15, False, _d("2026-07-15")),  # rolls to next month when day has passed
+        (_d("2026-06-06"), 6, False, _d("2026-06-06")),  # includes today unless after is set
+        (_d("2026-06-06"), 6, True, _d("2026-07-06")),  # after skips today
+        (_d("2026-01-31"), 31, True, _d("2026-02-28")),  # clamps to last day of short month (2026 not a leap year)
+        (_d("2026-02-01"), 31, False, _d("2026-02-28")),
+    ],
+)
+def test_next_monthly(from_date: date, day: int, after: bool, expected: date):
+    assert recurring_transaction_service.next_monthly(from_date=from_date, day=day, after=after) == expected
 
 
-def test_next_monthly_rolls_to_next_month_when_day_has_passed():
-    assert recurring_transaction_service.next_monthly(from_date=_d("2026-06-20"), day=15) == _d("2026-07-15")
-
-
-def test_next_monthly_includes_today_unless_after_is_set():
-    assert recurring_transaction_service.next_monthly(from_date=_d("2026-06-06"), day=6) == _d("2026-06-06")
-    assert recurring_transaction_service.next_monthly(from_date=_d("2026-06-06"), day=6, after=True) == _d("2026-07-06")
-
-
-def test_next_monthly_clamps_to_last_day_of_short_month():
-    # 2026 is not a leap year, so February has 28 days.
-    assert recurring_transaction_service.next_monthly(from_date=_d("2026-01-31"), day=31, after=True) == _d(
-        "2026-02-28"
-    )
-    assert recurring_transaction_service.next_monthly(from_date=_d("2026-02-01"), day=31) == _d("2026-02-28")
-
-
-def test_next_weekly_includes_today_unless_after_is_set():
-    assert recurring_transaction_service.next_weekly(from_date=SATURDAY, weekday=SATURDAY.weekday()) == SATURDAY
-    assert recurring_transaction_service.next_weekly(from_date=SATURDAY, weekday=SATURDAY.weekday(), after=True) == _d(
-        "2026-06-13"
-    )
-
-
-def test_next_weekly_advances_to_the_next_matching_weekday():
-    # Two weekdays after Saturday is Monday.
-    assert recurring_transaction_service.next_weekly(from_date=SATURDAY, weekday=(SATURDAY.weekday() + 2) % 7) == _d(
-        "2026-06-08"
-    )
+@pytest.mark.parametrize(
+    argnames=("from_date", "weekday", "after", "expected"),
+    argvalues=[
+        (SATURDAY, SATURDAY.weekday(), False, SATURDAY),  # includes today unless after is set
+        (SATURDAY, SATURDAY.weekday(), True, _d("2026-06-13")),  # after skips today
+        (SATURDAY, (SATURDAY.weekday() + 2) % 7, False, _d("2026-06-08")),  # two weekdays after Saturday is Monday
+    ],
+)
+def test_next_weekly(from_date: date, weekday: int, after: bool, expected: date):
+    assert recurring_transaction_service.next_weekly(from_date=from_date, weekday=weekday, after=after) == expected
 
 
 # --- creating rules --------------------------------------------------------

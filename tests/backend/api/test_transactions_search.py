@@ -212,25 +212,25 @@ def test_search_returns_empty_when_no_match(http_client: TestClient, session_fac
     assert response.json() == []
 
 
-def test_search_rejects_unknown_transaction_type(http_client: TestClient, session_factory: sessionmaker):
+@pytest.mark.parametrize(
+    argnames="param, value",
+    argvalues=[
+        ("transaction_types", "NOT_A_REAL_TYPE"),
+        ("categories", "NOT_A_REAL_CATEGORY"),
+    ],
+)
+def test_search_rejects_unknown_enum_value(
+    http_client: TestClient,
+    session_factory: sessionmaker,
+    param: str,
+    value: str,
+):
     account_id = setup_account(http_client=http_client, session_factory=session_factory)
     _seed_three_transactions(session_factory=session_factory, account_id=account_id)
 
     response = http_client.get(
         "/api/transactions/search",
-        params=[("account_ids", account_id), ("transaction_types", "NOT_A_REAL_TYPE")],
-    )
-
-    assert response.status_code == 422
-
-
-def test_search_rejects_unknown_category(http_client: TestClient, session_factory: sessionmaker):
-    account_id = setup_account(http_client=http_client, session_factory=session_factory)
-    _seed_three_transactions(session_factory=session_factory, account_id=account_id)
-
-    response = http_client.get(
-        "/api/transactions/search",
-        params=[("account_ids", account_id), ("categories", "NOT_A_REAL_CATEGORY")],
+        params=[("account_ids", account_id), (param, value)],
     )
 
     assert response.status_code == 422
@@ -279,30 +279,29 @@ def test_search_requires_authentication(http_client: TestClient):
     assert response.status_code == 401
 
 
-def test_search_linked_returns_only_transfer_transactions(http_client: TestClient, session_factory: sessionmaker):
+@pytest.mark.parametrize(
+    argnames="linked_value, expected_keys",
+    argvalues=[
+        ("linked", {"out", "back"}),
+        ("unlinked", {"single"}),
+    ],
+)
+def test_search_linked_filter_returns_matching_transactions(
+    http_client: TestClient,
+    session_factory: sessionmaker,
+    linked_value: str,
+    expected_keys: set[str],
+):
     account_id = setup_account(http_client=http_client, session_factory=session_factory)
     ids = _seed_linked_pair_and_single(session_factory=session_factory, account_id=account_id)
 
     response = http_client.get(
         "/api/transactions/search",
-        params=[("account_ids", account_id), ("linked", "linked")],
+        params=[("account_ids", account_id), ("linked", linked_value)],
     )
 
     assert response.status_code == 200
-    assert _ids_in_response(response.json()) == {ids["out"], ids["back"]}
-
-
-def test_search_unlinked_returns_only_standalone_transactions(http_client: TestClient, session_factory: sessionmaker):
-    account_id = setup_account(http_client=http_client, session_factory=session_factory)
-    ids = _seed_linked_pair_and_single(session_factory=session_factory, account_id=account_id)
-
-    response = http_client.get(
-        "/api/transactions/search",
-        params=[("account_ids", account_id), ("linked", "unlinked")],
-    )
-
-    assert response.status_code == 200
-    assert _ids_in_response(response.json()) == {ids["single"]}
+    assert _ids_in_response(response.json()) == {ids[key] for key in expected_keys}
 
 
 def test_search_without_linked_filter_returns_both(http_client: TestClient, session_factory: sessionmaker):
@@ -315,41 +314,52 @@ def test_search_without_linked_filter_returns_both(http_client: TestClient, sess
     assert _ids_in_response(response.json()) == set(ids.values())
 
 
-def test_search_rejects_invalid_linked_value(http_client: TestClient, session_factory: sessionmaker):
+@pytest.mark.parametrize(
+    argnames="param, value",
+    argvalues=[
+        ("linked", "maybe"),
+        ("has_attachment", "maybe"),
+    ],
+)
+def test_search_rejects_invalid_filter_value(
+    http_client: TestClient,
+    session_factory: sessionmaker,
+    param: str,
+    value: str,
+):
     account_id = setup_account(http_client=http_client, session_factory=session_factory)
 
     response = http_client.get(
         "/api/transactions/search",
-        params=[("account_ids", account_id), ("linked", "maybe")],
+        params=[("account_ids", account_id), (param, value)],
     )
 
     assert response.status_code == 422
 
 
-def test_search_has_attachment_with_returns_only_attached(http_client: TestClient, session_factory: sessionmaker):
+@pytest.mark.parametrize(
+    argnames="has_attachment_value, expected_key",
+    argvalues=[
+        ("with", "with"),
+        ("without", "without"),
+    ],
+)
+def test_search_has_attachment_filter_returns_matching_transactions(
+    http_client: TestClient,
+    session_factory: sessionmaker,
+    has_attachment_value: str,
+    expected_key: str,
+):
     account_id = setup_account(http_client=http_client, session_factory=session_factory)
     ids = _seed_with_and_without_attachment(session_factory=session_factory, account_id=account_id)
 
     response = http_client.get(
         "/api/transactions/search",
-        params=[("account_ids", account_id), ("has_attachment", "with")],
+        params=[("account_ids", account_id), ("has_attachment", has_attachment_value)],
     )
 
     assert response.status_code == 200
-    assert _ids_in_response(response.json()) == {ids["with"]}
-
-
-def test_search_has_attachment_without_returns_only_unattached(http_client: TestClient, session_factory: sessionmaker):
-    account_id = setup_account(http_client=http_client, session_factory=session_factory)
-    ids = _seed_with_and_without_attachment(session_factory=session_factory, account_id=account_id)
-
-    response = http_client.get(
-        "/api/transactions/search",
-        params=[("account_ids", account_id), ("has_attachment", "without")],
-    )
-
-    assert response.status_code == 200
-    assert _ids_in_response(response.json()) == {ids["without"]}
+    assert _ids_in_response(response.json()) == {ids[expected_key]}
 
 
 def test_search_text_matches_attachment_filename(http_client: TestClient, session_factory: sessionmaker):
@@ -363,14 +373,3 @@ def test_search_text_matches_attachment_filename(http_client: TestClient, sessio
 
     assert response.status_code == 200
     assert _ids_in_response(response.json()) == {ids["with"]}
-
-
-def test_search_rejects_invalid_has_attachment_value(http_client: TestClient, session_factory: sessionmaker):
-    account_id = setup_account(http_client=http_client, session_factory=session_factory)
-
-    response = http_client.get(
-        "/api/transactions/search",
-        params=[("account_ids", account_id), ("has_attachment", "maybe")],
-    )
-
-    assert response.status_code == 422

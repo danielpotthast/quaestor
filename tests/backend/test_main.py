@@ -22,9 +22,13 @@ def test_log_startup_version_logs_name_and_version(caplog: pytest.LogCaptureFixt
     assert get_project_version() in message
 
 
-def test_rename_uvicorn_error_filter_renames_uvicorn_error_records():
+@pytest.mark.parametrize(
+    argnames="input_name, expected_name",
+    argvalues=[("uvicorn.error", "uvicorn"), ("anything.else", "anything.else")],
+)
+def test_rename_uvicorn_error_filter(input_name: str, expected_name: str):
     record = logging.LogRecord(
-        name="uvicorn.error",
+        name=input_name,
         level=logging.INFO,
         pathname=__file__,
         lineno=0,
@@ -34,44 +38,21 @@ def test_rename_uvicorn_error_filter_renames_uvicorn_error_records():
     )
 
     assert main._RenameUvicornError().filter(record) is True
-    assert record.name == "uvicorn"
+    assert record.name == expected_name
 
 
-def test_rename_uvicorn_error_filter_leaves_other_records_alone():
-    record = logging.LogRecord(
-        name="anything.else",
-        level=logging.INFO,
-        pathname=__file__,
-        lineno=0,
-        msg="boot",
-        args=(),
-        exc_info=None,
-    )
-
-    assert main._RenameUvicornError().filter(record) is True
-    assert record.name == "anything.else"
-
-
-def test_loggable_json_body_returns_none_for_empty_body():
-    assert main._loggable_json_body(raw=b"", content_type="application/json") is None
-
-
-def test_loggable_json_body_returns_none_for_non_json_content_type():
-    assert main._loggable_json_body(raw=b"{}", content_type="text/html") is None
-
-
-def test_loggable_json_body_returns_none_when_body_exceeds_size_limit():
-    too_big = b"x" * (main.MAX_LOGGED_BODY_BYTES + 1)
-
-    assert main._loggable_json_body(raw=too_big, content_type="application/json") is None
-
-
-def test_loggable_json_body_returns_none_for_malformed_json():
-    assert main._loggable_json_body(raw=b"not-json", content_type="application/json") is None
-
-
-def test_loggable_json_body_returns_parsed_object_for_valid_json():
-    assert main._loggable_json_body(raw=b'{"x": 1}', content_type="application/json") == {"x": 1}
+@pytest.mark.parametrize(
+    argnames="raw, content_type, expected",
+    argvalues=[
+        (b"", "application/json", None),
+        (b"{}", "text/html", None),
+        (b"x" * (main.MAX_LOGGED_BODY_BYTES + 1), "application/json", None),
+        (b"not-json", "application/json", None),
+        (b'{"x": 1}', "application/json", {"x": 1}),
+    ],
+)
+def test_loggable_json_body(raw: bytes, content_type: str, expected: dict | None):
+    assert main._loggable_json_body(raw=raw, content_type=content_type) == expected
 
 
 def _log_request_with_status(status_code: int, caplog: pytest.LogCaptureFixture) -> None:

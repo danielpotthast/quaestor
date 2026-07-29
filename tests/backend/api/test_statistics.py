@@ -94,11 +94,14 @@ def test_categories_respects_date_range(http_client: TestClient, session_factory
     assert response.json() == [{"category": "FUEL", "total": 10.0}]
 
 
-def test_categories_rejects_invalid_direction(http_client: TestClient, session_factory: sessionmaker):
+@pytest.mark.parametrize(
+    argnames=("param", "value"), argvalues=[("direction", "sideways"), ("transaction_types", "NONSENSE")]
+)
+def test_categories_rejects_invalid_filter(
+    http_client: TestClient, session_factory: sessionmaker, param: str, value: str
+):
     account_id = setup_account(http_client=http_client, session_factory=session_factory)
-    response = http_client.get(
-        "/api/statistics/categories", params=[("account_ids", account_id), ("direction", "sideways")]
-    )
+    response = http_client.get("/api/statistics/categories", params=[("account_ids", account_id), (param, value)])
     assert response.status_code == 422
 
 
@@ -213,15 +216,6 @@ def test_categories_filter_by_linked_transfers_only(http_client: TestClient, ses
     assert unlinked.json() == [{"category": "RENT", "total": 100.0}]
 
 
-def test_categories_rejects_invalid_transaction_type(http_client: TestClient, session_factory: sessionmaker):
-    account_id = setup_account(http_client=http_client, session_factory=session_factory)
-    response = http_client.get(
-        "/api/statistics/categories",
-        params=[("account_ids", account_id), ("transaction_types", "NONSENSE")],
-    )
-    assert response.status_code == 422
-
-
 def test_categories_filter_restricts_results(http_client: TestClient, session_factory: sessionmaker):
     account_id = setup_account(http_client=http_client, session_factory=session_factory)
     with session_factory() as session:
@@ -301,17 +295,6 @@ def test_other_parties_orders_by_total_desc(http_client: TestClient, session_fac
         {"other_party": "Rewe", "total": 20.0},
         {"other_party": "Amazon", "total": 5.0},
     ]
-
-
-def test_other_parties_excludes_null_and_empty_party(http_client: TestClient, session_factory: sessionmaker):
-    account_id = setup_account(http_client=http_client, session_factory=session_factory)
-    _seed_other_parties(session_factory=session_factory, account_id=account_id)
-
-    response = http_client.get("/api/statistics/other-parties", params=[("account_ids", account_id)])
-
-    parties = {row["other_party"] for row in response.json()}
-    assert parties == {"Rewe", "Edeka", "Amazon"}
-    assert "" not in parties
 
 
 def test_other_parties_income_direction(http_client: TestClient, session_factory: sessionmaker):

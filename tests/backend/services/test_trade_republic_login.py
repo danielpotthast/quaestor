@@ -41,45 +41,38 @@ def _patch_client(monkeypatch: pytest.MonkeyPatch, initiate_side_effect: Excepti
     monkeypatch.setattr(target=module, name="TradeRepublicApi", value=_FakeApi)
 
 
-def test_start_translates_http_400_into_invalid_credentials(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+@pytest.mark.parametrize(
+    argnames=("initiate_side_effect", "expected_exception", "expected_log"),
+    argvalues=[
+        # Trade Republic answers 400 to the weblogin when the phone number / PIN is wrong.
+        (
+            _http_error(400),
+            InvalidCredentialsError,
+            ["Initiating Trade Republic web login", "Trade Republic rejected the login"],
+        ),
+        (
+            ValueError("bad phone number"),
+            InvalidCredentialsError,
+            ["Trade Republic rejected the login for credential 1"],
+        ),
+        (_http_error(503), requests.exceptions.HTTPError, []),  # server errors are re-raised generically
+        (_http_error(429), BankRateLimitedError, ["Trade Republic rate limited the login for credential 1"]),
+    ],
+)
+def test_start_translates_initiate_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    initiate_side_effect: Exception,
+    expected_exception: type[Exception],
+    expected_log: list[str],
 ):
-    # Trade Republic answers 400 to the weblogin when the phone number / PIN is wrong.
-    _patch_client(monkeypatch=monkeypatch, initiate_side_effect=_http_error(400))
+    _patch_client(monkeypatch=monkeypatch, initiate_side_effect=initiate_side_effect)
 
-    with pytest.raises(InvalidCredentialsError):
+    with pytest.raises(expected_exception):
         module.start(credential_id=1, phone_no=PHONE_NUMBER, pin=PIN)
 
-    assert_log_contains(caplog, messages=["Initiating Trade Republic web login", "Trade Republic rejected the login"])
-
-
-def test_start_translates_value_error_into_invalid_credentials(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-):
-    _patch_client(monkeypatch=monkeypatch, initiate_side_effect=ValueError("bad phone number"))
-
-    with pytest.raises(InvalidCredentialsError):
-        module.start(credential_id=1, phone_no="nonsense", pin=PIN)
-
-    assert_log_contains(caplog, message="Trade Republic rejected the login for credential 1")
-
-
-def test_start_reraises_server_errors_as_generic(monkeypatch: pytest.MonkeyPatch):
-    _patch_client(monkeypatch=monkeypatch, initiate_side_effect=_http_error(503))
-
-    with pytest.raises(requests.exceptions.HTTPError):
-        module.start(credential_id=1, phone_no=PHONE_NUMBER, pin=PIN)
-
-
-def test_start_translates_rate_limit_into_bank_rate_limited(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-):
-    _patch_client(monkeypatch=monkeypatch, initiate_side_effect=_http_error(429))
-
-    with pytest.raises(BankRateLimitedError):
-        module.start(credential_id=1, phone_no=PHONE_NUMBER, pin=PIN)
-
-    assert_log_contains(caplog, message="Trade Republic rate limited the login for credential 1")
+    if expected_log:
+        assert_log_contains(caplog, messages=expected_log)
 
 
 def _patch_successful_client(

@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
 
@@ -25,23 +26,23 @@ def test_create_expected_transaction_returns_201_with_fields(http_client: TestCl
     assert body["match_tolerance_percent"] == 10
 
 
-def test_create_expected_transaction_rejects_invalid_tolerance(http_client: TestClient, session_factory: sessionmaker):
+@pytest.mark.parametrize(
+    argnames="payload",
+    argvalues=[
+        {"amount": 100.0, "match_tolerance_percent": 7},  # invalid tolerance
+        {"amount": 0, "match_tolerance_percent": 0},  # zero amount
+    ],
+)
+def test_create_expected_transaction_rejects_invalid_payload(
+    http_client: TestClient,
+    session_factory: sessionmaker,
+    payload: dict,
+):
     account_id = setup_account(http_client=http_client, session_factory=session_factory)
 
     response = http_client.post(
         f"/api/account/{account_id}/expected-transactions",
-        json={"amount": 100.0, "match_tolerance_percent": 7},
-    )
-
-    assert response.status_code == 422
-
-
-def test_create_expected_transaction_rejects_zero_amount(http_client: TestClient, session_factory: sessionmaker):
-    account_id = setup_account(http_client=http_client, session_factory=session_factory)
-
-    response = http_client.post(
-        f"/api/account/{account_id}/expected-transactions",
-        json={"amount": 0, "match_tolerance_percent": 0},
+        json=payload,
     )
 
     assert response.status_code == 422
@@ -110,12 +111,25 @@ def test_update_expected_transaction_rejects_invalid_tolerance(http_client: Test
     assert response.status_code == 422
 
 
-def test_update_unknown_expected_transaction_returns_404(http_client: TestClient, session_factory: sessionmaker):
+@pytest.mark.parametrize(
+    argnames="method, json_body",
+    argvalues=[
+        ("PATCH", {"amount": 10.0, "match_tolerance_percent": 0}),
+        ("DELETE", None),
+    ],
+)
+def test_modify_unknown_expected_transaction_returns_404(
+    http_client: TestClient,
+    session_factory: sessionmaker,
+    method: str,
+    json_body: dict | None,
+):
     account_id = setup_account(http_client=http_client, session_factory=session_factory)
 
-    response = http_client.patch(
-        f"/api/account/{account_id}/expected-transactions/999999",
-        json={"amount": 10.0, "match_tolerance_percent": 0},
+    response = http_client.request(
+        method=method,
+        url=f"/api/account/{account_id}/expected-transactions/999999",
+        json=json_body,
     )
 
     assert response.status_code == 404
@@ -132,14 +146,6 @@ def test_delete_expected_transaction_removes_it(http_client: TestClient, session
 
     assert delete_response.status_code == 204
     assert http_client.get(f"/api/account/{account_id}/expected-transactions").json() == []
-
-
-def test_delete_unknown_expected_transaction_returns_404(http_client: TestClient, session_factory: sessionmaker):
-    account_id = setup_account(http_client=http_client, session_factory=session_factory)
-
-    response = http_client.delete(f"/api/account/{account_id}/expected-transactions/999999")
-
-    assert response.status_code == 404
 
 
 def test_expected_transactions_are_excluded_from_history(http_client: TestClient, session_factory: sessionmaker):

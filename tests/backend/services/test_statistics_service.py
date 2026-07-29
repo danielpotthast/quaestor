@@ -62,31 +62,9 @@ def test_daily_net_worth_returns_empty_when_account_has_no_snapshots(session_fac
     assert result.series == []
 
 
-def test_daily_net_worth_anchors_to_earliest_snapshot_when_no_start_given(session_factory: sessionmaker):
-    # With date_from=None the range auto-anchors to the earliest snapshot, so the series
-    # spans from that snapshot up to today and is non-empty.
-    snapshot_day = datetime.date.today() - datetime.timedelta(days=2)
-    with session_factory() as session:
-        user, _, account = make_user_and_credential_and_account(session)
-        account.balance = 123.0
-        session.commit()
-        user_id, account_id = user.id, account.id
-    seed_snapshot(session_factory, account_id=account_id, day=snapshot_day, balance=123.0)
-
-    with session_factory() as session:
-        result = statistics_service.daily_net_worth(
-            db_session=session,
-            user=session.get(entity=User, ident=user_id),
-            account_ids=[account_id],
-            date_from=None,
-            date_to=None,
-        )
-
-    assert result.series
-    assert result.series[-1].value == 123.0
-
-
 def test_daily_net_worth_uses_live_balance_for_todays_point(session_factory: sessionmaker):
+    # With date_from=None the range auto-anchors to the earliest snapshot (series[0]), so the
+    # series spans from that snapshot up to today; today's point uses the live balance.
     snapshot_day = datetime.date.today() - datetime.timedelta(days=2)
     with session_factory() as session:
         user, _, account = make_user_and_credential_and_account(session)

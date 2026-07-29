@@ -11,10 +11,6 @@ def test_list_languages_returns_supported_languages(http_client: TestClient):
     assert response.json() == {"languages": list(i18n_service.SUPPORTED_LANGUAGES)}
 
 
-def test_list_languages_is_public(http_client: TestClient):
-    assert http_client.get("/api/i18n/languages").status_code == 200
-
-
 @pytest.mark.parametrize(
     argnames="env_value, expected",
     argvalues=[

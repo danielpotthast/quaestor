@@ -129,20 +129,24 @@ def _set_cookie_attributes(response: TestClient) -> dict[str, str]:
     return attributes
 
 
-def test_login_without_remember_me_sets_session_only_cookie(http_client_logged_out: TestClient):
-    response = http_client_logged_out.post("/api/auth/login", json={"user_name": USER_NAME, "password": VALID_PASSWORD})
+@pytest.mark.parametrize(
+    argnames=("login_json", "expected_max_age"),
+    argvalues=[
+        ({"user_name": USER_NAME, "password": VALID_PASSWORD}, None),
+        ({"user_name": USER_NAME, "password": VALID_PASSWORD, "remember_me": True}, str(14 * 24 * 60 * 60)),
+    ],
+)
+def test_login_remember_me_controls_cookie_max_age(
+    http_client_logged_out: TestClient, login_json: dict, expected_max_age: str | None
+):
+    response = http_client_logged_out.post("/api/auth/login", json=login_json)
 
     assert response.status_code == 200
-    assert "max-age" not in _set_cookie_attributes(response)
-
-
-def test_login_with_remember_me_sets_persistent_cookie(http_client_logged_out: TestClient):
-    response = http_client_logged_out.post(
-        "/api/auth/login", json={"user_name": USER_NAME, "password": VALID_PASSWORD, "remember_me": True}
-    )
-
-    assert response.status_code == 200
-    assert _set_cookie_attributes(response)["max-age"] == str(14 * 24 * 60 * 60)
+    attributes = _set_cookie_attributes(response)
+    if expected_max_age is None:
+        assert "max-age" not in attributes
+    else:
+        assert attributes["max-age"] == expected_max_age
 
 
 def test_session_refresh_preserves_remember_me_flag(http_client_logged_out: TestClient):
@@ -165,24 +169,21 @@ def test_session_cookie_is_httponly_lax_and_path_root(http_client_logged_out: Te
     assert attrs["path"] == "/"
 
 
-def test_session_cookie_is_not_secure_when_env_var_unset(
-    http_client_logged_out: TestClient, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(argnames=("env_value", "expected_secure"), argvalues=[(None, False), ("true", True)])
+def test_session_cookie_secure_follows_env_var(
+    http_client_logged_out: TestClient, monkeypatch: pytest.MonkeyPatch, env_value: str | None, expected_secure: bool
 ):
-    monkeypatch.delenv(name="SESSION_COOKIE_SECURE", raising=False)
+    if env_value is None:
+        monkeypatch.delenv(name="SESSION_COOKIE_SECURE", raising=False)
+    else:
+        monkeypatch.setenv(name="SESSION_COOKIE_SECURE", value=env_value)
 
     response = http_client_logged_out.post("/api/auth/login", json={"user_name": USER_NAME, "password": VALID_PASSWORD})
 
-    assert "secure" not in _set_cookie_attributes(response)
-
-
-def test_session_cookie_is_secure_when_env_var_true(
-    http_client_logged_out: TestClient, monkeypatch: pytest.MonkeyPatch
-):
-    monkeypatch.setenv(name="SESSION_COOKIE_SECURE", value="true")
-
-    response = http_client_logged_out.post("/api/auth/login", json={"user_name": USER_NAME, "password": VALID_PASSWORD})
-
-    assert "secure" in _set_cookie_attributes(response)
+    if expected_secure:
+        assert "secure" in _set_cookie_attributes(response)
+    else:
+        assert "secure" not in _set_cookie_attributes(response)
 
 
 def test_me_returns_current_user_when_authenticated(http_client: TestClient, caplog: pytest.LogCaptureFixture):
@@ -241,14 +242,15 @@ def test_register_accepts_explicit_theme(http_client: TestClient):
     assert response.json()["theme"] == "LIGHT"
 
 
-def test_register_rejects_invalid_theme(http_client: TestClient):
+@pytest.mark.parametrize(argnames=("field", "value"), argvalues=[("theme", "neon"), ("currency", "XYZ")])
+def test_register_rejects_invalid_field(http_client: TestClient, field: str, value: str):
     response = http_client.post(
         "/api/auth/register",
         json={
             "user_name": USER_NAME,
             "display_name": DISPLAY_NAME,
             "password": VALID_PASSWORD,
-            "theme": "neon",
+            field: value,
         },
     )
 
@@ -280,20 +282,6 @@ def test_register_accepts_explicit_language_and_currency(http_client: TestClient
     assert body["currency"] == "USD"
 
 
-def test_register_rejects_unsupported_currency(http_client: TestClient):
-    response = http_client.post(
-        "/api/auth/register",
-        json={
-            "user_name": USER_NAME,
-            "display_name": DISPLAY_NAME,
-            "password": VALID_PASSWORD,
-            "currency": "XYZ",
-        },
-    )
-
-    assert response.status_code == 422
-
-
 def test_password_requirements_returns_current_rules(http_client: TestClient):
     response = http_client.get("/api/auth/password_requirements")
 
@@ -307,10 +295,6 @@ def test_password_requirements_returns_current_rules(http_client: TestClient):
             {"name": "symbol", "regex": "[^A-Za-z0-9]", "description": "a special character"},
         ],
     }
-
-
-def test_password_requirements_is_public(http_client: TestClient):
-    assert http_client.get("/api/auth/password_requirements").status_code == 200
 
 
 def test_logout_returns_no_content_and_invalidates_session(http_client: TestClient, caplog: pytest.LogCaptureFixture):
@@ -330,22 +314,15 @@ def test_logout_without_session_cookie_is_idempotent(http_client: TestClient):
     assert response.status_code == 204
 
 
-def test_register_is_blocked_when_registration_is_disabled(http_client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv(name=ALLOW_NEW_USER_REGISTRATION_ENV_VARIABLE_NAME, value="false")
-
-    response = register(http_client, user_name="late")
-
-    assert response.status_code == 403
-
-
-def test_register_succeeds_when_registration_is_explicitly_enabled(
-    http_client: TestClient, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(argnames=("env_value", "expected_status"), argvalues=[("false", 403), ("true", 201)])
+def test_register_respects_registration_toggle(
+    http_client: TestClient, monkeypatch: pytest.MonkeyPatch, env_value: str, expected_status: int
 ):
-    monkeypatch.setenv(name=ALLOW_NEW_USER_REGISTRATION_ENV_VARIABLE_NAME, value="true")
+    monkeypatch.setenv(name=ALLOW_NEW_USER_REGISTRATION_ENV_VARIABLE_NAME, value=env_value)
 
-    response = register(http_client, user_name="early")
+    response = register(http_client, user_name="toggle")
 
-    assert response.status_code == 201
+    assert response.status_code == expected_status
 
 
 @pytest.fixture

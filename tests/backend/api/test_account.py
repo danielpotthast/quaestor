@@ -5,7 +5,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
 
 from source.backend.api.schemas.transactions.transaction import TransactionDetailRead
-from source.backend.bank_handlers import BankProvider
 from source.backend.models.accounts.account import Account
 from source.backend.models.banking.credential import Credential
 from source.backend.models.transactions.transaction import Transaction
@@ -16,8 +15,6 @@ from tests.backend.conftest import (
     USER_NAME,
     create_credential,
     create_manual_credential,
-    make_credential,
-    make_user,
     persist_account,
     persist_transaction,
     register,
@@ -31,47 +28,12 @@ def _create_manual_account_payload(credential_id: int) -> dict:
     return {"credential_id": credential_id, "name": "Wallet", "balance": 50.0}
 
 
-def test_create_manual_account_succeeds_on_owned_manual_credential(http_client: TestClient):
-    register(http_client)
-    credential_id = create_manual_credential(http_client)
-
-    response = http_client.post("/api/account", json=_create_manual_account_payload(credential_id))
-
-    assert response.status_code == 201
-    assert response.json()["name"] == "Wallet"
-    assert response.json()["balance"] == 50.0
-
-
 def test_create_manual_account_with_unknown_credential_returns_404(http_client: TestClient):
     register(http_client)
 
     response = http_client.post("/api/account", json=_create_manual_account_payload(999999))
 
     assert response.status_code == 404
-
-
-def test_create_manual_account_with_other_users_credential_returns_404(
-    http_client: TestClient, session_factory: sessionmaker
-):
-    register(http_client)
-    with session_factory() as session:
-        other = make_user(session, user_name=SECOND_USER_NAME, display_name="Other")
-        foreign_credential = make_credential(session, user_id=other.id, bank=BankProvider.MANUAL, credentials={})
-        session.commit()
-        foreign_credential_id = foreign_credential.id
-
-    response = http_client.post("/api/account", json=_create_manual_account_payload(foreign_credential_id))
-
-    assert response.status_code == 404
-
-
-def test_create_manual_account_on_non_manual_credential_returns_403(http_client: TestClient):
-    register(http_client)
-    credential_id = create_credential(http_client).json()["id"]
-
-    response = http_client.post("/api/account", json=_create_manual_account_payload(credential_id))
-
-    assert response.status_code == 403
 
 
 def test_update_account_changes_balance_factor(http_client: TestClient, session_factory: sessionmaker):

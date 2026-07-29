@@ -91,6 +91,7 @@ def test_start_sync_marks_job_failed_on_exception(patch_sync: PatchSync, caplog:
             await asyncio.sleep(0)
         assert job.status == JobStatus.FAILED
         assert "Something went wrong" in (job.error or "")
+        assert job.error_code == JobErrorCode.UNKNOWN  # unexpected failures are tagged UNKNOWN
 
     asyncio.run(scenario())
 
@@ -113,21 +114,6 @@ def test_start_sync_tags_invalid_credentials_with_error_code(patch_sync: PatchSy
     asyncio.run(scenario())
 
     assert_log_contains(caplog, message="failed: The bank rejected the login")
-
-
-def test_start_sync_tags_unexpected_failure_with_unknown_error_code(patch_sync: PatchSync):
-    patch_sync(RuntimeError("boom"))
-
-    async def scenario():
-        job = await sync_jobs.start_sync(credential_id=42)
-        for _ in range(50):
-            if job.finished_at is not None:
-                break
-            await asyncio.sleep(0)
-        assert job.status == JobStatus.FAILED
-        assert job.error_code == JobErrorCode.UNKNOWN
-
-    asyncio.run(scenario())
 
 
 def test_start_sync_holds_awaiting_two_factor(patch_sync: PatchSync, caplog: pytest.LogCaptureFixture):

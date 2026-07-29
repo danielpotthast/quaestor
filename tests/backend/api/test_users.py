@@ -68,7 +68,7 @@ def test_update_user_rejects_user_name_taken_by_other_user_case_insensitively(ht
     register(http_client, user_name=SECOND_USER_NAME)
     user_id = register_and_login(http_client, user_name=USER_NAME)
 
-    response = http_client.patch(f"/api/users/{user_id}", json={"user_name": SECOND_USER_NAME})
+    response = http_client.patch(f"/api/users/{user_id}", json={"user_name": SECOND_USER_NAME.upper()})
 
     assert response.status_code == 409
 
@@ -165,23 +165,13 @@ def test_update_user_rejects_new_password_without_current_password(http_client: 
     assert response.status_code == 422
 
 
-def test_update_user_rejects_new_password_that_fails_complexity(http_client: TestClient):
+@pytest.mark.parametrize(argnames="new_password", argvalues=["alllowercaseletters", "Sh0rt!"])  # nosec B105
+def test_update_user_rejects_invalid_new_password(http_client: TestClient, new_password: str):
     user_id = register_and_get_id(http_client)
 
     response = http_client.patch(
         f"/api/users/{user_id}",
-        json={"current_password": VALID_PASSWORD, "new_password": "alllowercaseletters"},  # nosec B105
-    )
-
-    assert response.status_code == 422
-
-
-def test_update_user_rejects_short_new_password(http_client: TestClient):
-    user_id = register_and_get_id(http_client)
-
-    response = http_client.patch(
-        f"/api/users/{user_id}",
-        json={"current_password": VALID_PASSWORD, "new_password": "Sh0rt!"},  # nosec B105
+        json={"current_password": VALID_PASSWORD, "new_password": new_password},
     )
 
     assert response.status_code == 422
