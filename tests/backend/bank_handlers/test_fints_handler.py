@@ -7,20 +7,13 @@ import pytest
 
 from source.backend.bank_handlers import BANKS_BY_NAME, BankProvider
 from source.backend.bank_handlers import fints_handler as module
-from source.backend.bank_handlers.base import (
-    BalanceObservation,
-    BankInfo,
-    FetchedAccount,
-)
+from source.backend.bank_handlers.base import BalanceObservation, BankInfo, FetchedAccount
 from source.backend.bank_handlers.fints_handler import (
     FinTSHandler,
     _resolve_decoupled,
     _try_configure_pushtan_mechanism,
 )
-from source.backend.exceptions import (
-    InvalidCredentialsError,
-    ReauthenticationRequiredError,
-)
+from source.backend.exceptions import InvalidCredentialsError, ReauthenticationRequiredError, UnsupportedBankError
 from tests.backend.conftest import (
     ACCOUNT_IBAN,
     BANK_PASSWORD,
@@ -103,7 +96,7 @@ def test_client_resolves_blz_and_url_for_unpinned_bank(monkeypatch: pytest.Monke
     assert captured["server"] == "https://lookup/66050101"
 
 
-def test_client_raises_invalid_credentials_for_unknown_blz(
+def test_client_raises_unsupported_bank_for_unknown_blz(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ):
     def boom(bank_code: str) -> str:
@@ -111,7 +104,7 @@ def test_client_raises_invalid_credentials_for_unknown_blz(
 
     monkeypatch.setattr(target=module, name="fints_url", value=MagicMock(find=boom))
 
-    with pytest.raises(InvalidCredentialsError, match="No FinTS server known for BLZ 99999999"):
+    with pytest.raises(UnsupportedBankError, match="No FinTS server known for BLZ 99999999"):
         _fints_handler(blz="99999999").client(user_id=BANK_USERNAME, pin=PIN)
 
     assert_log_contains(caplog, message="No FinTS server known for BLZ")

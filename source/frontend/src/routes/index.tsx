@@ -47,7 +47,12 @@ function OverviewPage() {
         toastedRef.current.add(job.credential_id)
         const bank = user?.credentials.find((c) => c.id === job.credential_id)?.bank ?? ''
         const bankTitle = t(`banks.${bank}.title`, { defaultValue: bank })
-        const key = job.error_code === 'rate_limited' ? 'sync.rateLimited' : 'sync.failed'
+        const key =
+          job.error_code === 'rate_limited'
+            ? 'sync.rateLimited'
+            : job.error_code === 'unsupported_bank'
+              ? 'sync.unsupportedBank'
+              : 'sync.failed'
         toast.error(t(key, { bank: bankTitle }))
       }
     }

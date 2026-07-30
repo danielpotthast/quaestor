@@ -12,6 +12,7 @@ from source.backend.exceptions import (
     InvalidCredentialsError,
     PSD2ApplicationNotActivatedError,
     PSD2RedirectUrlNotAllowedError,
+    UnsupportedBankError,
 )
 from source.backend.helpers import utc_now
 from source.backend.logging_utils import get_logger
@@ -35,6 +36,7 @@ class JobStatus(str, Enum):
 class JobErrorCode(str, Enum):
     CANCELLED = "cancelled"
     INVALID_CREDENTIALS = "invalid_credentials"
+    UNSUPPORTED_BANK = "unsupported_bank"
     RATE_LIMITED = "rate_limited"
     REDIRECT_URL_NOT_ALLOWED = "redirect_url_not_allowed"
     APPLICATION_NOT_ACTIVATED = "application_not_activated"
@@ -121,6 +123,7 @@ async def _apply_result_handling_errors(
 ) -> None:
     error_codes = {
         InvalidCredentialsError: JobErrorCode.INVALID_CREDENTIALS,
+        UnsupportedBankError: JobErrorCode.UNSUPPORTED_BANK,
         BankRateLimitedError: JobErrorCode.RATE_LIMITED,
         PSD2RedirectUrlNotAllowedError: JobErrorCode.REDIRECT_URL_NOT_ALLOWED,
         PSD2ApplicationNotActivatedError: JobErrorCode.APPLICATION_NOT_ACTIVATED,

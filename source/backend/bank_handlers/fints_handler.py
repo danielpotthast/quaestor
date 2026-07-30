@@ -22,7 +22,7 @@ from source.backend.bank_handlers.base import (
     FetchedTransaction,
     TwoFactorStateCallback,
 )
-from source.backend.exceptions import InvalidCredentialsError, ReauthenticationRequiredError
+from source.backend.exceptions import InvalidCredentialsError, ReauthenticationRequiredError, UnsupportedBankError
 from source.backend.helpers import get_key_of_transaction
 from source.backend.logging_utils import get_logger
 from source.backend.models.transactions.transaction_type import TransactionType
@@ -238,9 +238,10 @@ def _resolve_fints_url(bank_code: str) -> str:
     try:
         url = fints_url.find(bank_code=bank_code)
     except Exception as e:
+        # This can only happen when a bank was removed from the fints catalog after it was added
         error_message = f"No FinTS server known for BLZ {bank_code}: {e}"
         logger.error(error_message)
-        raise InvalidCredentialsError(error_message) from e
+        raise UnsupportedBankError(error_message) from e
     logger.debug(f"Resolved FinTS URL for BLZ {bank_code}: {url}")
     return url
 

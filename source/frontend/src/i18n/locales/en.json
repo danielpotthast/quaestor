@@ -559,7 +559,8 @@
     },
     "skipped": "{{bank}} skipped.",
     "failed": "{{bank}} couldn't be synced.",
-    "rateLimited": "{{bank}} received too many requests. Please try again later."
+    "rateLimited": "{{bank}} received too many requests. Please try again later.",
+    "unsupportedBank": "The FinTS server for {{bank}} currently can't be found. Please contact your administrator."
   },
   "transaction": {
     "otherParty": "Other party",

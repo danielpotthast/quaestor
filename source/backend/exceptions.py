@@ -78,6 +78,10 @@ class InvalidCredentialsError(Exception):
     pass
 
 
+class UnsupportedBankError(Exception):
+    pass
+
+
 class BankRateLimitedError(Exception):
     pass
 
