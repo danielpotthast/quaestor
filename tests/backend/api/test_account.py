@@ -711,7 +711,6 @@ def test_transaction_detail_read_defaults_counterpart_to_none():
         transaction_type=None,
         category=TransactionCategory.UNKNOWN,
         note=None,
-        transfer_counterpart_id=None,
         pending=False,
     )
 
@@ -737,7 +736,6 @@ def test_get_transaction_includes_transfer_counterpart(http_client: TestClient, 
 
     assert response.status_code == 200
     body = response.json()
-    assert body["transfer_counterpart_id"] == in_id
     assert body["transfer_counterpart"]["id"] == in_id
     assert body["transfer_counterpart"]["account_id"] == account_b
     assert "transfer_counterpart" not in body["transfer_counterpart"]
@@ -774,7 +772,6 @@ def test_unlink_transactions_endpoint_clears_link(http_client: TestClient, sessi
     assert response.status_code == 204
 
     detail = http_client.get(f"/api/account/{account_a}/transactions/{out_id}").json()
-    assert detail["transfer_counterpart_id"] is None
     assert detail["transfer_counterpart"] is None
     assert detail["transaction_type"] == "OUTGOING"
 
@@ -816,11 +813,10 @@ def test_link_transactions_endpoint_links_both_legs(http_client: TestClient, ses
 
     assert response.status_code == 200
     body = response.json()
-    assert body["transfer_counterpart_id"] == in_id
     assert body["transaction_type"] == "TRANSFER_OUT"
     assert body["transfer_counterpart"]["id"] == in_id
     counterpart = http_client.get(f"/api/account/{account_b}/transactions/{in_id}").json()
-    assert counterpart["transfer_counterpart_id"] == out_id
+    assert counterpart["transfer_counterpart"]["id"] == out_id
     assert counterpart["transaction_type"] == "TRANSFER_IN"
 
 
@@ -850,10 +846,10 @@ def test_link_then_unlink_restores_original_types(http_client: TestClient, sessi
 
     assert response.status_code == 204
     detail = http_client.get(f"/api/account/{account_a}/transactions/{out_id}").json()
-    assert detail["transfer_counterpart_id"] is None
+    assert detail["transfer_counterpart"] is None
     assert detail["transaction_type"] == "OUTGOING"
     counterpart = http_client.get(f"/api/account/{account_b}/transactions/{in_id}").json()
-    assert counterpart["transfer_counterpart_id"] is None
+    assert counterpart["transfer_counterpart"] is None
     assert counterpart["transaction_type"] == "INCOMING"
 
 

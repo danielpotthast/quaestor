@@ -143,7 +143,6 @@ def test_net_worth_range_reports_before_after_and_transactions(session_factory: 
             "transaction_type": None,
             "category": TransactionCategory.UNKNOWN,
             "note": None,
-            "transfer_counterpart_id": None,
             "pending": False,
             "contract_id": None,
         }

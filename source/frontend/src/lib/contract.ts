@@ -27,13 +27,10 @@ export interface ContractRead {
   category: TransactionCategory | null
   source: ContractSource
   median_amount: number | null
-  amount_spread: number | null
   frequency: ContractFrequency | null
-  interval_days: number | null
   expected_next_date: string | null
   is_archived: boolean
   is_overdue: boolean
-  member_count: number
   amount_per_day: number | null
   amount_per_frequency: Record<ContractFrequency, number> | null
 }

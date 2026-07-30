@@ -32,7 +32,7 @@ def test_create_and_list_contract(
     assert created["name"] == "Gym"
     assert created["category"] == "FITNESS"
     assert created["source"] == "MANUAL"
-    assert created["member_count"] == 0
+    assert created["members"] == []
     assert_log_contains(caplog, messages=["Created manual", "<Contract("])
 
     listed = http_client.get("/api/contracts").json()
@@ -65,7 +65,6 @@ def test_changing_the_turnus_of_a_manual_contract(http_client: TestClient, sessi
 
     assert updated.status_code == 200
     assert updated.json()["frequency"] == "QUARTERLY"
-    assert updated.json()["interval_days"] == 91
 
     transaction_id = persist_transaction(session_factory, account_id=account_id, date=OLDER_DATE + timedelta(days=120))
     assigned = http_client.post(
@@ -89,7 +88,7 @@ def test_assign_and_remove_transaction(
     )
     assert assigned.status_code == 200
     body = assigned.json()
-    assert body["member_count"] == 1
+    assert len(body["members"]) == 1
     member = body["members"][0]
     assert member["id"] == transaction_id
     assert member["contract_assignment"] == "MANUAL"
@@ -97,7 +96,7 @@ def test_assign_and_remove_transaction(
 
     removed = http_client.delete(f"/api/contracts/{contract['id']}/transactions/{transaction_id}")
     assert removed.status_code == 200
-    assert removed.json()["member_count"] == 0
+    assert removed.json()["members"] == []
     assert_log_contains(caplog, messages=["Assigned <Transaction(", "Removed <Transaction("])
 
 
@@ -112,7 +111,7 @@ def test_reassigning_transaction_moves_it_between_contracts(http_client: TestCli
 
     assert moved.status_code == 200
     assert [member["id"] for member in moved.json()["members"]] == [transaction_id]
-    assert http_client.get(f"/api/contracts/{contract_a['id']}").json()["member_count"] == 0
+    assert http_client.get(f"/api/contracts/{contract_a['id']}").json()["members"] == []
 
 
 def test_removing_transaction_detaches_it_from_the_contract(http_client: TestClient, session_factory: sessionmaker):
