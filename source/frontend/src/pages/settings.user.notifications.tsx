@@ -334,7 +334,7 @@ function RuleRow({
       <RowActions
         onDelete={onDelete}
         deleting={remove.isPending}
-        confirmLabel={t('common.confirm')}
+        confirmLabel={t('common.deleteConfirm')}
         className="gap-1.5"
         renderTrigger={(confirm) => (
           <>

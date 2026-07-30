@@ -141,7 +141,7 @@ export function DeleteContractButton({
     return (
       <div className="flex gap-1">
         <Button size="sm" variant="destructive" onClick={onConfirm} disabled={isDeleting}>
-          {t('contracts.deleteConfirm')}
+          {t('common.deleteConfirm')}
         </Button>
         <Button
           size="sm"

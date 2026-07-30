@@ -415,7 +415,6 @@
       "newAccountCreating": "Wird angelegt …",
       "newAccountCreateFailed": "Konto konnte nicht angelegt werden.",
       "newAccountCreated": "Konto angelegt",
-      "deleteAccountConfirm": "Ja, Konto löschen",
       "deleteAccountFailed": "Konto konnte nicht gelöscht werden.",
       "deleteAccountSuccess": "Konto gelöscht",
       "balance": "Saldo",
@@ -433,7 +432,6 @@
       "saveFailed": "Änderungen konnten nicht gespeichert werden. Bitte erneut versuchen.",
       "deleteDescription": "Beim Löschen der Verbindung verschwinden alle Konten und Transaktionen, die daran hängen. Das kann nicht rückgängig gemacht werden.",
       "delete": "Verbindung löschen",
-      "deleteConfirm": "Ja, Verbindung löschen",
       "deleted": "Verbindung gelöscht",
       "deleteFailed": "Verbindung konnte nicht gelöscht werden. Bitte erneut versuchen."
     },
@@ -857,7 +855,6 @@
     "lastPayment": "Letzte Zahlung",
     "rename": "Vertrag Umbenennen",
     "renamed": "Vertrag umbenannt",
-    "deleteConfirm": "Löschen?",
     "archive": "Vertrag archivieren",
     "unarchive": "Reaktivieren",
     "unarchived": "Reaktiviert",

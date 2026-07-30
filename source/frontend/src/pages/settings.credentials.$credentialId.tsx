@@ -498,7 +498,7 @@ function DeleteAccountControls({
       <RowActions
         onDelete={onConfirm}
         deleting={remove.isPending}
-        confirmLabel={t('credentials.detail.deleteAccountConfirm')}
+        confirmLabel={t('common.deleteConfirm')}
         className="gap-2"
         renderTrigger={(confirm) => (
           <Button
@@ -548,7 +548,7 @@ function DangerZone({
       <RowActions
         onDelete={onConfirm}
         deleting={remove.isPending}
-        confirmLabel={t('credentials.detail.deleteConfirm')}
+        confirmLabel={t('common.deleteConfirm')}
         size="default"
         className="gap-2"
         renderTrigger={(confirm) => (

@@ -176,7 +176,7 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRead }) {
         <RowActions
           onDelete={onDelete}
           deleting={remove.isPending}
-          confirmLabel={t('common.confirm')}
+          confirmLabel={t('common.deleteConfirm')}
           className="gap-2 [&>button]:flex-1"
           renderTrigger={(confirm) => (
             <Button
