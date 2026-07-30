@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { Check, Copy, Pencil, Plus, Search, X } from 'lucide-react'
+import { Check, ChevronRight, Copy, Pencil, Plus, Search, X } from 'lucide-react'
+import { Collapsible } from 'radix-ui'
 import { toast } from 'sonner'
 
 import { type AccountRead } from '@/lib/auth'
@@ -30,6 +31,7 @@ import {
   relativeDateKey,
 } from '@/lib/format'
 import { copyText } from '@/lib/clipboard'
+import { EXPECTED_TRANSACTIONS_KEY, useCollapsedGroups } from '@/lib/collapsedGroups'
 import { cn } from '@/lib/utils'
 import { AmountInput } from '@/components/ui/amount-input'
 import { Button } from '@/components/ui/button'
@@ -775,30 +777,43 @@ function ExpectedAddHeaderButton({
 function ExpectedTransactionsList({ accountId, onAdd }: { accountId: number; onAdd: () => void }) {
   const { t } = useTranslation()
   const { data: expected } = useExpectedTransactions(accountId)
+  const { isCollapsed, toggle } = useCollapsedGroups()
 
   if (!expected || expected.length === 0) return null
 
   return (
-    <section className="flex flex-col gap-2">
+    <Collapsible.Root
+      open={!isCollapsed(EXPECTED_TRANSACTIONS_KEY)}
+      onOpenChange={() => toggle(EXPECTED_TRANSACTIONS_KEY)}
+      className="flex flex-col gap-2"
+    >
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-          {t('expectedTransactions.title')}
-        </h2>
+        <Collapsible.Trigger className="group/collapsible flex flex-1 cursor-pointer items-center gap-2">
+          <ChevronRight
+            aria-hidden="true"
+            className="text-muted-foreground size-3.5 shrink-0 transition-transform duration-200 ease-in-out group-data-[state=open]/collapsible:rotate-90"
+          />
+          <h2 className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+            {t('expectedTransactions.title')}
+          </h2>
+        </Collapsible.Trigger>
         <Button type="button" size="sm" variant="outline" onClick={onAdd}>
           <Plus className="size-3.5" aria-hidden="true" />
           {t('expectedTransactions.addShort')}
         </Button>
       </div>
-      <ul className="border-border divide-border bg-card flex flex-col divide-y rounded-lg border">
-        {expected.map((expectation) => (
-          <ExpectedTransactionRow
-            key={expectation.id}
-            accountId={accountId}
-            expectation={expectation}
-          />
-        ))}
-      </ul>
-    </section>
+      <Collapsible.Content className="collapsible-content overflow-hidden">
+        <ul className="border-border divide-border bg-card flex flex-col divide-y rounded-lg border">
+          {expected.map((expectation) => (
+            <ExpectedTransactionRow
+              key={expectation.id}
+              accountId={accountId}
+              expectation={expectation}
+            />
+          ))}
+        </ul>
+      </Collapsible.Content>
+    </Collapsible.Root>
   )
 }
 

@@ -4,6 +4,8 @@ import { safeStorage } from './storage'
 
 export const STORAGE_KEY = 'collapsedGroups'
 
+export const EXPECTED_TRANSACTIONS_KEY = 'expectedTransactions'
+
 const store = safeStorage(STORAGE_KEY, 'local')
 
 export function readCollapsed(): Set<string> {
