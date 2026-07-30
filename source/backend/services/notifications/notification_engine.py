@@ -237,15 +237,16 @@ def _digest_notification(
         net=format_amount(round(number=current.income - current.expenses, ndigits=2), currency=currency),
     )
     comparison = _digest_comparison(current=current, previous=previous, keys=keys, language=language, currency=currency)
+    body = notification_messages.translate(
+        language,
+        key="digest.body",
+        expenses=format_amount(current.expenses, currency=currency),
+        income=format_amount(current.income, currency=currency),
+        count=current.count,
+    )
     return Notification(
-        title=rule.name or (f"{title} ({comparison})" if comparison else title),
-        body=notification_messages.translate(
-            language,
-            key="digest.body",
-            expenses=format_amount(current.expenses, currency=currency),
-            income=format_amount(current.income, currency=currency),
-            count=current.count,
-        ),
+        title=rule.name or title,
+        body=f"{body}\n{comparison}" if comparison else body,
         url=_digest_url(start=start, end=end),
         tag=f"digest-{rule.id}",
     )

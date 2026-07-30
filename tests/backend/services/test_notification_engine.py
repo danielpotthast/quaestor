@@ -489,8 +489,8 @@ def test_weekly_digest_reports_the_previous_week(
 
     assert_one_notification(
         notifications=sent,
-        title="Weekly review: 40,00 € (100 % / 30,00 € more spending than last week)",
-        body="Spent 60,00 € · Received 100,00 € · 2 transactions",
+        title="Weekly review: 40,00 €",
+        body="Spent 60,00 € · Received 100,00 € · 2 transactions\n100 % / 30,00 € more spending than last week",
         url="/stats?date_from=2026-07-13&date_to=2026-07-19",
     )
     assert_log_contains(caplog, messages=["Evaluating digest rules for", "digest for 2026-07-13..2026-07-19"])
@@ -513,6 +513,7 @@ def test_monthly_digest_reports_the_previous_month(session_factory: sessionmaker
         user = _user_with_digest_rule(db_session, period=DigestPeriod.MONTHLY)
         account_id = user.credentials[0].accounts[0].id
         make_transaction(db_session, account_id=account_id, amount=-20.0, date=date(year=2026, month=6, day=15))
+        make_transaction(db_session, account_id=account_id, amount=-10.0, date=date(year=2026, month=5, day=15))
         db_session.commit()
 
         notification_engine.evaluate_digests(db_session=db_session, today=date(year=2026, month=7, day=1))
@@ -520,7 +521,7 @@ def test_monthly_digest_reports_the_previous_month(session_factory: sessionmaker
     assert_one_notification(
         notifications=sent,
         title="Monthly review: -20,00 €",
-        body="Spent 20,00 € · Received 0,00 € · 1 transactions",
+        body="Spent 20,00 € · Received 0,00 € · 1 transactions\n100 % / 10,00 € more spending than last month",
         url="/stats?date_from=2026-06-01&date_to=2026-06-30",
     )
 
