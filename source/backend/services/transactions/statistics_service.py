@@ -458,8 +458,9 @@ def get_net_worth_of_range(
                 transactions=[TransactionRead.model_validate(transaction) for transaction in transactions],
             )
         )
-        total_at_start += before or 0.0
-        total_at_end += after or 0.0
+        factor = account.balance_factor / 100
+        total_at_start += (before or 0.0) * factor
+        total_at_end += (after or 0.0) * factor
 
     logger.debug(f"Computed net worth breakdown for {start}..{end} over {len(changes)} account(s) for {user}")
     return NetWorthRangeResponse(

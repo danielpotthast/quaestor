@@ -217,6 +217,31 @@ def test_net_worth_range_uses_live_balance_for_today(session_factory: sessionmak
     assert result.total_at_end == 80.0
 
 
+def test_net_worth_range_totals_apply_balance_factor(session_factory: sessionmaker):
+    end = LATEST_DATE
+    start = end - datetime.timedelta(days=1)
+    with session_factory() as session:
+        user, _, account = make_user_and_credential_and_account(session)
+        account.balance_factor = 50
+        session.commit()
+        user_id, account_id = user.id, account.id
+    seed_snapshot(session_factory, account_id=account_id, day=start, balance=100.0)
+    seed_snapshot(session_factory, account_id=account_id, day=end, balance=130.0)
+
+    with session_factory() as session:
+        result = statistics_service.get_net_worth_of_range(
+            db_session=session,
+            user=session.get(entity=User, ident=user_id),
+            account_ids=[account_id],
+            start=start,
+            end=end,
+        )
+
+    change = result.accounts[0]
+    assert (change.balance_at_start, change.balance_at_end, change.difference) == (100.0, 130.0, 30.0)
+    assert (result.total_at_start, result.total_at_end, result.total_difference) == (50.0, 65.0, 15.0)
+
+
 def _seed_count_transactions(session: Session, account_id: int) -> None:
     for offset_days in [0, 0, 6, 7, 30]:
         make_transaction(session, account_id=account_id, date=LATEST_DATE + datetime.timedelta(days=offset_days))

@@ -107,16 +107,8 @@ export function NetWorthDetailPage() {
     }))
     .filter((group) => group.accounts.length > 0)
 
-  const factored = (balance: number | null, account: AccountWithBank) =>
-    ((balance ?? 0) * account.balance_factor) / 100
-  let totalAtEnd = 0
-  let totalAtStart = 0
-  for (const account of groups.flatMap((group) => group.accounts)) {
-    const change = changeByAccount.get(account.id)
-    totalAtEnd += factored(change?.balance_at_end ?? null, account)
-    totalAtStart += factored(change?.balance_at_start ?? null, account)
-  }
-  const totalDifference = Math.round((totalAtEnd - totalAtStart) * 100) / 100
+  const totalAtEnd = range.data?.total_at_end ?? 0
+  const totalDifference = range.data?.total_difference ?? 0
 
   return (
     <main className="mx-auto flex min-h-full max-w-page flex-col gap-6 p-4">
