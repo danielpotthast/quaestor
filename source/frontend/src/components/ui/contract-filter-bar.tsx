@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Archive, CircleCheck, Repeat, TriangleAlert } from 'lucide-react'
 
 import type { CredentialRead } from '@/lib/auth'
+import { defaultAccountIds, sameAccountSelection } from '@/lib/accounts'
 import {
   CONTRACT_FREQUENCY_FILTERS,
   CONTRACT_OVERDUE_FILTERS,
@@ -34,9 +35,7 @@ export interface ContractFilterBarProps {
 function ContractFilterBar({ credentials, filters, onChange }: ContractFilterBarProps) {
   const { t } = useTranslation()
   const iconClass = 'text-muted-foreground size-4 shrink-0'
-  const accountIds = credentials.flatMap((credential) =>
-    credential.accounts.map((account) => account.id),
-  )
+  const defaultIds = defaultAccountIds(credentials)
 
   const update = <K extends keyof ContractFilters>(key: K, value: ContractFilters[K]) =>
     onChange({ ...filters, [key]: value })
@@ -100,8 +99,10 @@ function ContractFilterBar({ credentials, filters, onChange }: ContractFilterBar
             <AccountMultiSelect
               id="contract-filter-accounts"
               credentials={credentials}
-              selectedIds={shownOrAll(filters.account_ids, accountIds)}
-              onChange={(next) => update('account_ids', normalize(next, accountIds.length))}
+              selectedIds={filters.account_ids ?? defaultIds}
+              onChange={(next) =>
+                update('account_ids', sameAccountSelection(next, defaultIds) ? undefined : next)
+              }
             />
           </div>
           <div className="flex flex-col gap-1.5">

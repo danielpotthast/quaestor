@@ -13,6 +13,7 @@ export interface AccountRead {
   balance: number
   balance_factor: number
   is_hidden: boolean
+  include_by_default: boolean
 }
 
 export interface CredentialRead {

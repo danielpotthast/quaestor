@@ -53,6 +53,7 @@ import {
   type StatsTypeFilters,
   type TransactionCountsGroupBy,
 } from '@/lib/statistics'
+import { defaultAccountIds } from '@/lib/accounts'
 import type { StatsViewProps, StatsViewState } from '@/routes/stats'
 
 export function StatsView({
@@ -63,12 +64,10 @@ export function StatsView({
   onOpenDay,
 }: StatsViewProps) {
   const { t } = useTranslation()
-  const allAccountIds = credentials.flatMap((credential) =>
-    credential.accounts.map((account) => account.id),
-  )
+  const defaultIds = defaultAccountIds(credentials)
   const defaults = defaultStatsDateRange()
 
-  const accountIds = search.account_ids ?? allAccountIds
+  const accountIds = search.account_ids ?? defaultIds
   const filters: StatsFilters = {
     date_from: search.date_from ?? defaults.date_from,
     date_to: search.date_to ?? defaults.date_to,
@@ -99,7 +98,7 @@ export function StatsView({
     })
 
   const filtersActive =
-    accountIds.length !== allAccountIds.length ||
+    accountIds.length !== defaultIds.length ||
     filters.date_from !== defaults.date_from ||
     filters.date_to !== defaults.date_to ||
     direction !== 'OUTGOING' ||
@@ -110,7 +109,7 @@ export function StatsView({
     hiddenParties.length > 0
   const resetFilters = () =>
     sync({
-      accountIds: allAccountIds,
+      accountIds: defaultIds,
       filters: defaults,
       direction: 'OUTGOING',
       categories: [...FILTERABLE_CATEGORIES],

@@ -15,6 +15,7 @@ class AccountRead(BaseModel):
     balance: float
     balance_factor: float
     is_hidden: bool
+    include_by_default: bool
 
 
 class AccountCreate(BaseModel):  # Only allowed for manual accounts
@@ -29,6 +30,7 @@ class AccountUpdate(BaseModel):
     balance_factor: Annotated[float, Field(ge=0, le=100)] | None = None
     display_name: Annotated[str, Field(max_length=150)] | None = None
     is_hidden: bool | None = None
+    include_by_default: bool | None = None
 
     balance: float | None = None  # Only allowed for manual accounts
 

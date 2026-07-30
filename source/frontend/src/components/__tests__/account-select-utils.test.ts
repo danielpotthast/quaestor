@@ -5,7 +5,15 @@ import type { AccountGroupLayout } from '@/lib/accountGroups'
 import type { AccountRead, CredentialRead } from '@/lib/auth'
 
 function account(id: number, name: string): AccountRead {
-  return { id, name, display_name: null, balance: 0, balance_factor: 100, is_hidden: false }
+  return {
+    id,
+    name,
+    display_name: null,
+    balance: 0,
+    balance_factor: 100,
+    is_hidden: false,
+    include_by_default: true,
+  }
 }
 
 const credentials: CredentialRead[] = [

@@ -155,7 +155,7 @@ describe('SettingsApiKeysView', () => {
     await screen.findByText('Doomed key')
 
     await user.click(screen.getByRole('button', { name: 'Delete' }))
-    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    await user.click(screen.getByRole('button', { name: 'Really delete?' }))
 
     await waitFor(() => {
       const del = fetchMock.mock.calls.find(

@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { useAuthMe, type CredentialRead } from '@/lib/auth'
+import { defaultAccountIds, sameAccountSelection } from '@/lib/accounts'
 import { TRANSACTION_CATEGORIES, TRANSACTION_TYPES } from '@/lib/transaction'
 import { type TransactionFilters } from '@/lib/transactionSearch'
 import { TransactionSearchView } from '@/pages/account.$accountId_.search'
@@ -39,15 +40,11 @@ function TransactionSearchPage() {
 
   const onChange = useCallback(
     ({ accountIds, filters }: { accountIds: number[]; filters: TransactionFilters }) => {
-      const allIds = (user?.credentials ?? []).flatMap((credential) =>
-        credential.accounts.map((account) => account.id),
-      )
-      const isAllAccounts =
-        accountIds.length === allIds.length && allIds.every((id) => accountIds.includes(id))
+      const isDefault = sameAccountSelection(accountIds, defaultAccountIds(user?.credentials ?? []))
       navigate({
         search: {
           ...filters,
-          account_ids: isAllAccounts ? undefined : accountIds,
+          account_ids: isDefault ? undefined : accountIds,
           link_account_id: search.link_account_id,
           link_transaction_id: search.link_transaction_id,
         } as TransactionSearchParams,

@@ -55,6 +55,7 @@ const credentials: CredentialRead[] = [
         balance_factor: 100,
         display_name: null,
         is_hidden: false,
+        include_by_default: true,
       },
     ],
     last_fetching_timestamp: null,

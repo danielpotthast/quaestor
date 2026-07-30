@@ -23,6 +23,7 @@ function buildAccount(overrides: Partial<AccountRead> = {}): AccountRead {
     balance: 1000,
     balance_factor: 100,
     is_hidden: false,
+    include_by_default: true,
     ...overrides,
   }
 }
@@ -203,7 +204,7 @@ describe('CredentialDetailView', () => {
     // The first click flips to confirm mode; DELETE isn't sent yet.
     expect(mutatingFetchCalls(fetchMock)).toHaveLength(0)
 
-    await user.click(screen.getByRole('button', { name: 'Yes, delete this connection' }))
+    await user.click(screen.getByRole('button', { name: 'Really delete?' }))
 
     await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1))
     expect(fetchMock).toHaveBeenCalledWith(

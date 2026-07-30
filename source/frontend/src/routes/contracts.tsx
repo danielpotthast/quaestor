@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { useAuthMe, type CredentialRead } from '@/lib/auth'
+import { defaultAccountIds } from '@/lib/accounts'
 import {
   CONTRACT_FREQUENCY_FILTERS,
   CONTRACT_OVERDUE_FILTERS,
@@ -106,12 +107,13 @@ function ContractsPage() {
   const { data: user } = useAuthMe()
   const navigate = useNavigate({ from: Route.fullPath })
 
-  const credentials: CredentialRead[] = user?.credentials ?? []
+  const credentials: CredentialRead[] = useMemo(() => user?.credentials ?? [], [user])
   const all = contracts ?? []
 
+  const defaultIds = useMemo(() => defaultAccountIds(credentials), [credentials])
   const visible = useMemo(
-    () => sortContracts(filterContracts(contracts ?? [], filters), sort),
-    [contracts, filters, sort],
+    () => sortContracts(filterContracts(contracts ?? [], filters, defaultIds), sort),
+    [contracts, filters, sort, defaultIds],
   )
 
   const setFilters = (next: ContractFilters) =>

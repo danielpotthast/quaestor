@@ -55,6 +55,28 @@ def test_update_account_persists_balance_factor(http_client: TestClient, session
         assert stored.balance_factor == 25
 
 
+def test_account_defaults_to_included_by_default(http_client: TestClient, session_factory: sessionmaker):
+    account_id = setup_account(http_client=http_client, session_factory=session_factory)
+
+    response = http_client.patch(f"/api/account/{account_id}", json={})
+
+    assert response.status_code == 200
+    assert response.json()["include_by_default"] is True
+
+
+def test_update_account_clears_include_by_default(http_client: TestClient, session_factory: sessionmaker):
+    account_id = setup_account(http_client=http_client, session_factory=session_factory)
+
+    response = http_client.patch(f"/api/account/{account_id}", json={"include_by_default": False})
+
+    assert response.status_code == 200
+    assert response.json()["include_by_default"] is False
+    with session_factory() as session:
+        stored = session.get(entity=Account, ident=account_id)
+        assert stored is not None
+        assert stored.include_by_default is False
+
+
 @pytest.mark.parametrize(argnames="balance_factor", argvalues=[-1, 101])
 def test_update_account_rejects_out_of_range_balance_factor(
     http_client: TestClient, session_factory: sessionmaker, balance_factor: int

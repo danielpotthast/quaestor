@@ -378,6 +378,24 @@ function AccountRow({ account, isManual }: { account: AccountRead; isManual: boo
     }
   }
 
+  const defaultInputId = `account-${account.id}-include-by-default`
+  const [includeByDefault, setIncludeByDefault] = useState(account.include_by_default)
+  const [lastDefaultProp, setLastDefaultProp] = useState(account.include_by_default)
+  if (account.include_by_default !== lastDefaultProp) {
+    setLastDefaultProp(account.include_by_default)
+    setIncludeByDefault(account.include_by_default)
+  }
+  const onIncludeByDefaultChange = async (next: boolean) => {
+    setIncludeByDefault(next)
+    try {
+      await mutateAsync({ accountId: account.id, include_by_default: next })
+      toast.success(t('common.saved'))
+    } catch {
+      setIncludeByDefault(account.include_by_default)
+      toast.error(t('credentials.detail.saveFailed'))
+    }
+  }
+
   return (
     <li className="border-border bg-card flex flex-col rounded-lg border shadow-sm">
       <div className="flex items-start justify-between gap-3 p-4">
@@ -462,6 +480,23 @@ function AccountRow({ account, isManual }: { account: AccountRead; isManual: boo
             <span>{t('credentials.detail.hide')}</span>
           </label>
           <p className="text-muted-foreground text-xs">{t('credentials.detail.hideHint')}</p>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor={defaultInputId}
+            className="flex cursor-pointer items-center gap-2 text-sm"
+          >
+            <Checkbox
+              id={defaultInputId}
+              checked={includeByDefault}
+              onCheckedChange={(checked) => void onIncludeByDefaultChange(checked === true)}
+            />
+            <span>{t('credentials.detail.includeByDefault')}</span>
+          </label>
+          <p className="text-muted-foreground text-xs">
+            {t('credentials.detail.includeByDefaultHint')}
+          </p>
         </div>
       </div>
       {isManual ? (

@@ -25,7 +25,22 @@ export interface AccountUpdatePayload {
   balance_factor?: number
   display_name?: string | null
   is_hidden?: boolean
+  include_by_default?: boolean
   balance?: number
+}
+
+export function defaultAccountIds(credentials: CredentialRead[]): number[] {
+  return credentials.flatMap((credential) =>
+    credential.accounts
+      .filter((account) => account.include_by_default)
+      .map((account) => account.id),
+  )
+}
+
+/** Order-insensitive equality of two account-id selections. Used to collapse a
+ *  selection that equals the default view back to "no filter" (no URL param). */
+export function sameAccountSelection(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((id) => b.includes(id))
 }
 
 export function useUpdateAccount() {

@@ -45,6 +45,7 @@ vi.mock('@/lib/auth', () => ({
               balance: 130,
               balance_factor: 100,
               is_hidden: false,
+              include_by_default: true,
             },
             {
               id: 43,
@@ -53,6 +54,7 @@ vi.mock('@/lib/auth', () => ({
               balance: 500,
               balance_factor: 150,
               is_hidden: false,
+              include_by_default: true,
             },
           ],
         },

@@ -420,6 +420,8 @@
       "balance": "Saldo",
       "hide": "In der Übersicht ausblenden",
       "hideHint": "Konto wird nicht angezeigt und nicht in Gesamt- oder Gruppensummen einberechnet.",
+      "includeByDefault": "Standardmäßig auswählen",
+      "includeByDefaultHint": "Konto ist in Kontoauswahlen (Suche, Statistik, Verträge) vorausgewählt. Ausschalten für Konten, die du trackst, aber im Alltag nicht sehen willst (z. B. Geschäftskonten).",
       "syncEnabled": "Beim Synchronisieren aller Konten einbeziehen",
       "syncEnabledHint": "Wenn deaktiviert, wird diese Verbindung beim „Alle synchronisieren“ in der Übersicht und beim automatischen Hintergrund-Abgleich übersprungen. Ein einzelnes Synchronisieren ist hier weiterhin möglich. Praktisch für Konten mit Zwei-Faktor-Authentifizierung und wenigen Buchungen, bei denen die wiederholte Bestätigung unnötig ist.",
       "displayName": "Persönlicher Name",

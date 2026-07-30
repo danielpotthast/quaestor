@@ -32,6 +32,7 @@ function makeUser(): UserRead {
             balance: 500,
             balance_factor: 100,
             is_hidden: false,
+            include_by_default: true,
           },
           {
             id: 2,
@@ -40,6 +41,7 @@ function makeUser(): UserRead {
             balance: 1000,
             balance_factor: 100,
             is_hidden: false,
+            include_by_default: true,
           },
         ],
         last_fetching_timestamp: '2026-06-15T08:30:00Z',
@@ -59,6 +61,7 @@ function makeUser(): UserRead {
             balance: 50,
             balance_factor: 100,
             is_hidden: false,
+            include_by_default: true,
           },
         ],
         last_fetching_timestamp: null,

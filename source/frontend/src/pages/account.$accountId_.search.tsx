@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { SingleSelectPopover } from '@/components/ui/single-select-popover'
 import { TransactionFilterFields } from '@/components/ui/transaction-filter-fields'
 import type { TransactionRead } from '@/lib/accountHistory'
-import { accountNamesById } from '@/lib/accounts'
+import { accountNamesById, defaultAccountIds } from '@/lib/accounts'
 import { type CredentialRead } from '@/lib/auth'
 import { formatDate, formatMoney, formatIban } from '@/lib/format'
 import { CategoryAvatar } from '@/lib/categoryIcons'
@@ -35,11 +35,8 @@ export function TransactionSearchView({
   onChange,
 }: TransactionSearchViewProps) {
   const { t } = useTranslation()
-  const allAccountIds = useMemo(
-    () => credentials.flatMap((credential) => credential.accounts.map((account) => account.id)),
-    [credentials],
-  )
-  const [accountIds, setAccountIds] = useState<number[]>(search.account_ids ?? allAccountIds)
+  const defaultIds = useMemo(() => defaultAccountIds(credentials), [credentials])
+  const [accountIds, setAccountIds] = useState<number[]>(search.account_ids ?? defaultIds)
   const [draft, setDraft] = useState<TransactionFilters>(toFilters(search))
 
   const update = <K extends keyof TransactionFilters>(key: K, value: TransactionFilters[K]) =>
@@ -48,7 +45,7 @@ export function TransactionSearchView({
   const debouncedDraft = useDebouncedValue(draft, 300)
 
   const [initial] = useState(() => ({
-    accountIds: search.account_ids ?? allAccountIds,
+    accountIds: search.account_ids ?? defaultIds,
     draft: toFilters(search),
   }))
   const sortedIds = (ids: number[]) => [...ids].sort((a, b) => a - b).join(',')

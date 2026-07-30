@@ -92,6 +92,14 @@ describe('filterContracts', () => {
     expect(ids(filterContracts(all, { account_ids: undefined }))).toEqual([1, 2, 3, 4, 5])
   })
 
+  it('falls back to the default accounts when no explicit account filter is set', () => {
+    expect(ids(filterContracts(all, { account_ids: undefined }, [10]))).toEqual([1, 3, 5])
+  })
+
+  it('an explicit account filter overrides the default fallback', () => {
+    expect(ids(filterContracts(all, { account_ids: [20] }, [10]))).toEqual([2, 4])
+  })
+
   it('filters by category and excludes contracts without one', () => {
     expect(ids(filterContracts(all, { categories: ['RENT', 'SALARY'] }))).toEqual([2, 3])
   })

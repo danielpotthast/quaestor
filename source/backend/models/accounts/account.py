@@ -44,13 +44,13 @@ class Account(Base):
     balance: Mapped[float] = mapped_column(Float, default=0.0)
     balance_factor: Mapped[float] = mapped_column(Float, default=100.0)
     is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
-    # The bank doesn't report every balance movement as a transaction (e.g. PayPal's
-    # automatic bank funding); balance history comes from bank-reported anchors only.
+    include_by_default: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
+    # The bank doesn't report every balance movement as a transaction (e.g. PayPal's automatic bank funding); balance
+    # history comes from bank-reported anchors only.
     transaction_history_incomplete: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
-    # User-defined grouping for the overview. NULL = "ungrouped" (rendered in a
-    # default bucket). `position` orders accounts within their group OR within
-    # the ungrouped bucket.
+    # User-defined grouping for the overview. NULL = "ungrouped" (rendered in a default bucket). `position` orders
+    # accounts within their group OR within the ungrouped bucket.
     group_id: Mapped[int | None] = mapped_column(ForeignKey("account_groups.id", ondelete="SET NULL"), nullable=True)
     position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 

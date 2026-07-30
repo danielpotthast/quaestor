@@ -420,6 +420,8 @@
       "balance": "Balance",
       "hide": "Hide from overview",
       "hideHint": "Account is not displayed and not counted in total or group balances.",
+      "includeByDefault": "Select by default",
+      "includeByDefaultHint": "Account is pre-selected in account pickers (search, stats, contracts). Turn off for accounts you track but don't want in everyday views (e.g. business accounts).",
       "syncEnabled": "Include when syncing all accounts",
       "syncEnabledHint": "When disabled, this connection is skipped by \"Sync all\" in the overview and by the automatic background sync. Syncing it individually here is still possible. Handy for accounts with two-factor authentication and few transactions, where confirming it every time is a nuisance.",
       "displayName": "Personalised name",

@@ -44,6 +44,7 @@ const account: AccountRead = {
   balance: 1000,
   balance_factor: 100,
   is_hidden: false,
+  include_by_default: true,
 }
 
 function buildRule(overrides: Partial<RecurringTransactionRead> = {}): RecurringTransactionRead {

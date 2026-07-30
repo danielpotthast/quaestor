@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { useAuthMe, type CredentialRead } from '@/lib/auth'
+import { defaultAccountIds, sameAccountSelection } from '@/lib/accounts'
 import {
   TRANSACTION_CATEGORIES,
   TRANSACTION_TYPES,
@@ -49,6 +50,8 @@ function StatsPage() {
 
   if (!user) return null // root guard already redirected on 401
 
+  const defaultIds = defaultAccountIds(user.credentials)
+
   return (
     <StatsView
       credentials={user.credentials}
@@ -56,7 +59,9 @@ function StatsPage() {
       onChange={(next) =>
         navigate({
           search: {
-            account_ids: next.accountIds,
+            account_ids: sameAccountSelection(next.accountIds, defaultIds)
+              ? undefined
+              : next.accountIds,
             date_from: next.filters.date_from,
             date_to: next.filters.date_to,
             chart_type: next.chartType,

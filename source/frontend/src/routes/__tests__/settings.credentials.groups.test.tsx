@@ -44,6 +44,7 @@ function buildUser(): UserRead {
             balance: 100,
             balance_factor: 100,
             is_hidden: false,
+            include_by_default: true,
           },
           {
             id: 2,
@@ -52,6 +53,7 @@ function buildUser(): UserRead {
             balance: 200,
             balance_factor: 100,
             is_hidden: false,
+            include_by_default: true,
           },
         ],
         last_fetching_timestamp: null,
