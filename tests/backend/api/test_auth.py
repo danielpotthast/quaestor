@@ -169,21 +169,15 @@ def test_session_cookie_is_httponly_lax_and_path_root(http_client_logged_out: Te
     assert attrs["path"] == "/"
 
 
-@pytest.mark.parametrize(argnames=("env_value", "expected_secure"), argvalues=[(None, False), ("true", True)])
-def test_session_cookie_secure_follows_env_var(
-    http_client_logged_out: TestClient, monkeypatch: pytest.MonkeyPatch, env_value: str | None, expected_secure: bool
+@pytest.mark.parametrize(argnames=("scheme", "expected_secure"), argvalues=[("http", False), ("https", True)])
+def test_session_cookie_secure_follows_request_scheme(
+    http_client_logged_out: TestClient, scheme: str, expected_secure: bool
 ):
-    if env_value is None:
-        monkeypatch.delenv(name="SESSION_COOKIE_SECURE", raising=False)
-    else:
-        monkeypatch.setenv(name="SESSION_COOKIE_SECURE", value=env_value)
+    response = http_client_logged_out.post(
+        f"{scheme}://testserver/api/auth/login", json={"user_name": USER_NAME, "password": VALID_PASSWORD}
+    )
 
-    response = http_client_logged_out.post("/api/auth/login", json={"user_name": USER_NAME, "password": VALID_PASSWORD})
-
-    if expected_secure:
-        assert "secure" in _set_cookie_attributes(response)
-    else:
-        assert "secure" not in _set_cookie_attributes(response)
+    assert ("secure" in _set_cookie_attributes(response)) == expected_secure
 
 
 def test_me_returns_current_user_when_authenticated(http_client: TestClient, caplog: pytest.LogCaptureFixture):

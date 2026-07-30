@@ -198,7 +198,9 @@ async def refresh_session(request: Request, call_next: Callable[[Request], Await
         )
         session_service.clear_session_cookie(response)
     elif session_valid:
-        session_service.set_session_cookie(response=response, raw_token=raw_token, remember_me=remember_me)
+        session_service.set_session_cookie(
+            request=request, response=response, raw_token=raw_token, remember_me=remember_me
+        )
     return response
 
 

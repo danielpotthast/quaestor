@@ -165,7 +165,7 @@ Thus, there are many security measures in place:
  - Frontend tweaks
    - CSRF protection: state-changing requests require a `csrf_token` cookie + matching `X-CSRF-Token` header.
    - Rate limiting: auth endpoints are throttled heavily per source IP. Set `FORWARDED_ALLOW_IPS` if behind a reverse proxy.
-   - Hardened headers and cookies: `Content-Security-Policy`, `HttpOnly`, `SameSite=Lax`, CSRF: `SameSite=Strict`, `Secure` flag when (`SESSION_COOKIE_SECURE=true`).
+   - Hardened headers and cookies (`Content-Security-Policy`, `HttpOnly`, `SameSite=Lax`, `Secure` and `SameSite=Strict`)
 
 ## Deployment
 
@@ -248,7 +248,6 @@ To reset the password of a user and disable his/her two-factor authentication us
 | `LOG_LEVEL`                   | The level to log at. When set to `DEBUG` all the http request and response data is logged. The app tries (but not ensures) to redact all sensible data. Don't set the `LOG_LEVEL` to `DEBUG` in production.                                                                                                        | `INFO`                                                          |
 | `SYNC_INTERVAL_HOURS`         | How often (in hours) the server automatically syncs all credentials that don't require 2FA. Accepts fractional values (e.g. `0.5`).                                                                                                                                                                                | `12`                                                            |
 | `MAX_ATTACHMENT_SIZE_MB`      | Maximum size (in MB) of a single file attached to a transaction. Larger uploads are rejected.                                                                                                                                                                                                                      | `20`                                                            |
-| `SESSION_COOKIE_SECURE`       | Whether to set the `Secure` flag on the session and CSRF cookies. Set to `true` whenever the app is reachable over HTTPS.                                                                                                                                                                                          | `false`                                                         |
 | `FORWARDED_ALLOW_IPS`         | Comma-separated list of reverse-proxy IPs whose `X-Forwarded-For` / `X-Forwarded-Proto` headers the server trusts. Use `*` if the proxy IP is unpredictable (e.g. in container networks).                                                                                                                          | `127.0.0.1`                                                     |
 
 ## Future changes
@@ -270,7 +269,7 @@ There is a script `./scripts/db/get_uncategorized_transactions.sh` or `scripts/d
 
 **Q: My notifications don't work at all?**
 
-**A:** Make sure your instance is served over `HTTPS`. Browsers only allow push notifications (and the service worker they rely on) in a secure context, so notifications will never work over plain `http://`. See the `SSL_CERTFILE`/`SSL_KEYFILE` and `SESSION_COOKIE_SECURE` environment variables, or terminate TLS at a reverse proxy in front of the app.
+**A:** Make sure your instance is served over `HTTPS`. Browsers only allow push notifications (and the service worker they rely on) in a secure context, so notifications will never work over plain `http://`. See the `SSL_CERTFILE`/`SSL_KEYFILE` environment variables, or terminate TLS at a reverse proxy in front of the app.
 
 ---------
 

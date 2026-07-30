@@ -106,7 +106,7 @@ def _start_session(request: Request, response: Response, db_session: Session, us
         ip=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
-    session_service.set_session_cookie(response=response, raw_token=raw_token, remember_me=remember_me)
+    session_service.set_session_cookie(request=request, response=response, raw_token=raw_token, remember_me=remember_me)
 
 
 @router.get("/me", response_model=UserRead)

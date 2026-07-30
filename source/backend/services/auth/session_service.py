@@ -1,4 +1,3 @@
-import os
 import secrets
 from datetime import timedelta
 
@@ -24,8 +23,8 @@ _session_cookie_scheme = APIKeyCookie(name=COOKIE_NAME, scheme_name="Session coo
 _api_key_bearer_scheme = HTTPBearer(scheme_name="API key", auto_error=False)
 
 
-def cookie_is_secure() -> bool:
-    return os.environ.get(key="SESSION_COOKIE_SECURE", default="false").lower() == "true"
+def cookie_is_secure(request: Request) -> bool:
+    return request.url.scheme == "https"
 
 
 def create_session(
@@ -135,11 +134,12 @@ def delete_session(db_session: Session, raw_token: str) -> None:
     logger.info(f"Deleted session {user_session}")
 
 
-def set_session_cookie(response: Response, raw_token: str, remember_me: bool = False) -> None:
+def set_session_cookie(request: Request, response: Response, raw_token: str, remember_me: bool = False) -> None:
     max_age = int(SESSION_DURATION.total_seconds()) if remember_me else None
+    secure = cookie_is_secure(request)
     logger.debug(
         f"Setting session cookie ({'persistent, max_age=' + str(max_age) + 's' if remember_me else 'session-only'}, "
-        f"secure={cookie_is_secure()})"
+        f"secure={secure})"
     )
     response.set_cookie(
         key=COOKIE_NAME,
@@ -147,7 +147,7 @@ def set_session_cookie(response: Response, raw_token: str, remember_me: bool = F
         max_age=max_age,
         httponly=True,
         samesite="lax",
-        secure=cookie_is_secure(),
+        secure=secure,
         path="/",
     )
 

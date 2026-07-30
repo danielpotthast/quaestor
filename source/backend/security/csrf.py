@@ -44,7 +44,7 @@ async def csrf_middleware(request: Request, call_next: Callable[[Request], Await
             value=secrets.token_urlsafe(32),
             httponly=False,  # readable by the SPA so it can echo it back in the X-CSRF-Token header
             samesite="strict",
-            secure=cookie_is_secure(),
+            secure=cookie_is_secure(request),
             path="/",
         )
     return response
