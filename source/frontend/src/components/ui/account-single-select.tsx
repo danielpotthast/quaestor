@@ -8,7 +8,7 @@ import { accountDisplayName } from '@/lib/accounts'
 import { useAccountGroupLayout } from '@/lib/accountGroups'
 import type { CredentialRead } from '@/lib/auth'
 import { AccountOptionContent, AccountSelectPopover } from '@/components/ui/account-select'
-import { accountOptionRowClass, groupAccountsByBank } from '@/components/ui/account-select-utils'
+import { accountOptionRowClass, groupAccounts } from '@/components/ui/account-select-utils'
 
 export interface AccountSingleSelectProps {
   id?: string
@@ -19,7 +19,6 @@ export interface AccountSingleSelectProps {
   className?: string
 }
 
-/** Single-account variant of {@link AccountMultiSelect}: picking a row selects it and closes. */
 function AccountSingleSelect({
   id,
   credentials,
@@ -30,7 +29,7 @@ function AccountSingleSelect({
 }: AccountSingleSelectProps) {
   const [open, setOpen] = useState(false)
   const layout = useAccountGroupLayout()
-  const groups = groupAccountsByBank(credentials, layout.data)
+  const groups = groupAccounts(credentials, layout.data)
   const selectedAccount =
     groups.flatMap((group) => group.accounts).find((account) => account.id === value) ?? null
 
@@ -44,7 +43,7 @@ function AccountSingleSelect({
       isEmpty={!selectedAccount}
       emptyVariant="default"
       groups={groups}
-      renderAccount={(account, group) => (
+      renderAccount={(account) => (
         <button
           key={account.id}
           type="button"
@@ -55,7 +54,7 @@ function AccountSingleSelect({
           }}
           className={cn(accountOptionRowClass, 'text-left')}
         >
-          <AccountOptionContent group={group} account={account} />
+          <AccountOptionContent account={account} />
           {account.id === value ? (
             <Check className="text-primary size-4 shrink-0" aria-hidden="true" />
           ) : null}

@@ -7,7 +7,7 @@ import type { CredentialRead } from '@/lib/auth'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SelectAllHeader } from '@/components/ui/select-all-header'
 import { AccountOptionContent, AccountSelectPopover } from '@/components/ui/account-select'
-import { accountOptionRowClass, groupAccountsByBank } from '@/components/ui/account-select-utils'
+import { accountOptionRowClass, groupAccounts } from '@/components/ui/account-select-utils'
 
 export interface AccountMultiSelectProps {
   id?: string
@@ -17,11 +17,6 @@ export interface AccountMultiSelectProps {
   className?: string
 }
 
-/**
- * Popover with the full list of the user's accounts, grouped by bank like on
- * the overview page. Each row is a checkbox; the header offers "All" / "None"
- * shortcuts. Selection state is fully controlled by the parent.
- */
 function AccountMultiSelect({
   id,
   credentials,
@@ -31,7 +26,7 @@ function AccountMultiSelect({
 }: AccountMultiSelectProps) {
   const { t } = useTranslation()
   const layout = useAccountGroupLayout()
-  const groups = groupAccountsByBank(credentials, layout.data)
+  const groups = groupAccounts(credentials, layout.data)
   const allIds = groups.flatMap((group) => group.accounts.map((account) => account.id))
   const selectedSet = new Set(selectedIds)
   const selectedCount = selectedIds.length
@@ -67,11 +62,40 @@ function AccountMultiSelect({
           onNone={() => onChange([])}
         />
       }
-      renderAccount={(account, group) => {
+      renderHeading={(group, heading) => {
+        const ids = group.accounts.map((account) => account.id)
+        const selectedInGroup = ids.filter((id) => selectedSet.has(id)).length
+        const checked =
+          selectedInGroup === 0 ? false : selectedInGroup === ids.length ? true : 'indeterminate'
+        const checkboxId = `account-group-${group.key}`
+        const toggleGroup = () => {
+          const next = new Set(selectedSet)
+          if (selectedInGroup === ids.length) ids.forEach((id) => next.delete(id))
+          else ids.forEach((id) => next.add(id))
+          onChange([...next])
+        }
+        return (
+          <label
+            htmlFor={checkboxId}
+            className="hover:bg-muted/60 flex cursor-pointer items-center gap-3 rounded-md px-2 pt-2 pb-1"
+          >
+            <h3 className="text-muted-foreground flex-1 text-xs font-semibold tracking-wide uppercase">
+              {heading}
+            </h3>
+            <Checkbox
+              id={checkboxId}
+              data-select-row=""
+              checked={checked}
+              onCheckedChange={toggleGroup}
+            />
+          </label>
+        )
+      }}
+      renderAccount={(account) => {
         const checkboxId = `account-multi-${account.id}`
         return (
           <label key={account.id} htmlFor={checkboxId} className={accountOptionRowClass}>
-            <AccountOptionContent group={group} account={account} />
+            <AccountOptionContent account={account} />
             <Checkbox
               id={checkboxId}
               data-select-row=""

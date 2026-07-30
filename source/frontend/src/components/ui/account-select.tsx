@@ -8,26 +8,24 @@ import { cn } from '@/lib/utils'
 import { usePopoverScroll } from '@/lib/use-popover-scroll'
 import { accountDisplayName } from '@/lib/accounts'
 import { BankLogo } from '@/components/BankLogo'
-import type { AccountRead } from '@/lib/auth'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
   popoverTriggerClassName,
 } from '@/components/ui/popover'
-import type { AccountGroup } from '@/components/ui/account-select-utils'
+import type { AccountGroup, AccountOption } from '@/components/ui/account-select-utils'
 import { handleSelectListArrowKeys } from '@/components/ui/select-list-keyboard'
 
-export function AccountOptionContent({
-  group,
-  account,
-}: {
-  group: AccountGroup
-  account: AccountRead
-}) {
+export function AccountOptionContent({ account }: { account: AccountOption }) {
   return (
     <>
-      <BankLogo icon={group.icon} name={group.name} seed={group.name} className="size-5 shrink-0" />
+      <BankLogo
+        icon={account.bankIcon}
+        name={account.bankName}
+        seed={account.bankName}
+        className="size-5 shrink-0"
+      />
       <span className="flex-1 truncate">{accountDisplayName(account)}</span>
     </>
   )
@@ -40,16 +38,13 @@ export interface AccountSelectPopoverProps {
   onOpenChange?: (open: boolean) => void
   triggerLabel: ReactNode
   isEmpty: boolean
-  /** How to style the trigger when nothing is selected: 'destructive' when an empty
-   *  selection means "no results" (search), 'default' when it's just an unfilled field. */
   emptyVariant?: 'destructive' | 'default'
   header?: ReactNode
   groups: AccountGroup[]
-  renderAccount: (account: AccountRead, group: AccountGroup) => ReactNode
+  renderAccount: (account: AccountOption, group: AccountGroup) => ReactNode
+  renderHeading?: (group: AccountGroup, heading: string) => ReactNode
 }
 
-/** Popover shell with the bank-grouped account list; the trigger label, optional header and
- *  per-row control are supplied by the single- or multi-select wrapper. */
 export function AccountSelectPopover({
   id,
   className,
@@ -61,6 +56,7 @@ export function AccountSelectPopover({
   header,
   groups,
   renderAccount,
+  renderHeading,
 }: AccountSelectPopoverProps) {
   const { t } = useTranslation()
   const listRef = usePopoverScroll<HTMLUListElement>()
@@ -93,11 +89,24 @@ export function AccountSelectPopover({
           aria-label={t('common.accounts')}
           className="max-h-72 overflow-y-auto overscroll-contain p-1"
         >
-          {groups.map((group) => (
-            <li key={group.key} className="flex flex-col">
-              {group.accounts.map((account) => renderAccount(account, group))}
-            </li>
-          ))}
+          {groups.map((group) => {
+            const heading =
+              group.heading === '__ungrouped__'
+                ? t('credentials.groups.ungroupedHeading')
+                : group.heading
+            return (
+              <li key={group.key} className="flex flex-col">
+                {heading != null
+                  ? (renderHeading?.(group, heading) ?? (
+                      <h3 className="text-muted-foreground px-2 pt-2 pb-1 text-xs font-semibold tracking-wide uppercase">
+                        {heading}
+                      </h3>
+                    ))
+                  : null}
+                {group.accounts.map((account) => renderAccount(account, group))}
+              </li>
+            )
+          })}
         </ul>
       </PopoverContent>
     </Popover>
