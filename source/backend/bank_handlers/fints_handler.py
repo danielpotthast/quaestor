@@ -239,7 +239,7 @@ def _resolve_fints_url(bank_code: str) -> str:
         url = fints_url.find(bank_code=bank_code)
     except Exception as e:
         error_message = f"No FinTS server known for BLZ {bank_code}: {e}"
-        logger.warning(error_message)
+        logger.error(error_message)
         raise InvalidCredentialsError(error_message) from e
     logger.debug(f"Resolved FinTS URL for BLZ {bank_code}: {url}")
     return url

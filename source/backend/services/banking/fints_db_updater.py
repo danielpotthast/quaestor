@@ -31,6 +31,7 @@ def _reload_in_memory_db(pickle_path: Path) -> int:
     with pickle_path.open("rb") as handle:
         reloaded = pickle.load(handle)  # nosec: B301
     fints_url.__bank_info__ = reloaded
+    _add_bank_info_overrides_to_db()
     bank_catalog.invalidate_catalog_cache()
     return len(reloaded)
 
@@ -79,3 +80,6 @@ async def run_startup_update() -> None:
     except Exception as e:
         logger.exception(message="Startup FinTS bank DB update failed; keeping existing DB", exc_info=e)
     bank_catalog.invalidate_catalog_cache()
+
+
+_add_bank_info_overrides_to_db()

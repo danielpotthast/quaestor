@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import pickle  # nosec B403
 from pathlib import Path
 
 import fints_url
@@ -57,6 +58,18 @@ def test_apply_overrides_injects_banks_missing_from_the_dataset(monkeypatch: pyt
     updater.get_bank_db()
 
     assert fints_url.__bank_info__["12030000"]["fints"] == "https://fints.dkb.de/fints"
+    assert fints_url.find(bank_code="12030000") == "https://fints.dkb.de/fints"
+
+
+def test_reload_reapplies_overrides_dropped_by_the_raw_dataset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    dataset = {"99999999": {"blz": "99999999", "name": "X", "fints": "https://x/"}}
+    pickle_path = tmp_path / "bank_info.pickle"
+    pickle_path.write_bytes(pickle.dumps(dataset))
+    monkeypatch.setattr(target=fints_url, name="__bank_info__", value={})
+
+    updater._reload_in_memory_db(pickle_path)
+
+    assert "12030000" not in dataset  # the raw dataset itself does not carry DKB
     assert fints_url.find(bank_code="12030000") == "https://fints.dkb.de/fints"
 
 
