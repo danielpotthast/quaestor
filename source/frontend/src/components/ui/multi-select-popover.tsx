@@ -8,6 +8,7 @@ import { usePopoverScroll } from '@/lib/use-popover-scroll'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { handleSelectListArrowKeys } from '@/components/ui/select-list-keyboard'
+import { SelectAllHeader } from '@/components/ui/select-all-header'
 import {
   Popover,
   PopoverContent,
@@ -79,25 +80,13 @@ export function MultiSelectPopover<T extends string>({
         onKeyDown={handleSelectListArrowKeys}
       >
         {selectAll ? (
-          <div className="border-border/40 flex items-center justify-between gap-2 border-b px-3 py-2 text-xs">
-            <span className="text-muted-foreground">{selectAll.count(selectedCount)}</span>
-            <div className="flex gap-1">
-              <button
-                type="button"
-                className="text-primary hover:text-primary/80 cursor-pointer rounded-md px-2 py-0.5 transition-colors"
-                onClick={() => onChange(options.map((option) => option.value))}
-              >
-                {selectAll.all}
-              </button>
-              <button
-                type="button"
-                className="text-primary hover:text-primary/80 cursor-pointer rounded-md px-2 py-0.5 transition-colors"
-                onClick={() => onChange([])}
-              >
-                {selectAll.none}
-              </button>
-            </div>
-          </div>
+          <SelectAllHeader
+            countLabel={selectAll.count(selectedCount)}
+            allLabel={selectAll.all}
+            noneLabel={selectAll.none}
+            onAll={() => onChange(options.map((option) => option.value))}
+            onNone={() => onChange([])}
+          />
         ) : null}
         {searchPlaceholder ? (
           <div

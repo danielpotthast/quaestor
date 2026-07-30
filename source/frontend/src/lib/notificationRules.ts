@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 
 import { api } from './api'
+import { useInvalidatingMutation } from './mutation'
 import type { TransactionCategory, TransactionType } from './transaction'
 
 export const NOTIFICATION_TRIGGERS = [
@@ -178,27 +179,24 @@ export function useNotificationRules() {
 }
 
 export function useCreateNotificationRule() {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: (draft: NotificationRuleDraft) =>
       api<NotificationRule>('/notification_rules', { method: 'POST', body: draft }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: notificationRuleQueryKeys.list }),
+    invalidate: [notificationRuleQueryKeys.list],
   })
 }
 
 export function useUpdateNotificationRule() {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: ({ id, draft }: { id: number; draft: NotificationRuleDraft }) =>
       api<NotificationRule>(`/notification_rules/${id}`, { method: 'PUT', body: draft }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: notificationRuleQueryKeys.list }),
+    invalidate: [notificationRuleQueryKeys.list],
   })
 }
 
 export function useDeleteNotificationRule() {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: (id: number) => api<void>(`/notification_rules/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: notificationRuleQueryKeys.list }),
+    invalidate: [notificationRuleQueryKeys.list],
   })
 }

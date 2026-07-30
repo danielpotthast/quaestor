@@ -73,10 +73,11 @@ vi.mock(import('@/lib/statistics'), async (importOriginal) => ({
     isError: false,
     data: {
       start: '2026-05-19',
+      // Totals arrive pre-factored from the backend (Giro x1.0 + Depot x1.5); rows stay raw.
       end: '2026-05-20',
-      total_at_start: 350,
-      total_at_end: 630,
-      total_difference: 280,
+      total_at_start: 475,
+      total_at_end: 880,
+      total_difference: 405,
       accounts: [
         {
           account_id: 42,

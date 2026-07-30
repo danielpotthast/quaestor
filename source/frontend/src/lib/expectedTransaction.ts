@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 
 import { api } from './api'
+import { useInvalidatingMutation } from './mutation'
 
 export const MATCH_TOLERANCES = [0, 5, 10, 15, 20] as const
 
@@ -36,22 +37,18 @@ export function useExpectedTransactions(accountId: number) {
 }
 
 export function useCreateExpectedTransaction(accountId: number) {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: (payload: ExpectedTransactionCreatePayload) =>
       api<ExpectedTransactionRead>(`/account/${accountId}/expected-transactions`, {
         method: 'POST',
         body: payload,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: expectedQueryKeys.list(accountId) })
-    },
+    invalidate: [expectedQueryKeys.list(accountId)],
   })
 }
 
 export function useUpdateExpectedTransaction(accountId: number) {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: ({
       expectedTransactionId,
       payload,
@@ -66,21 +63,16 @@ export function useUpdateExpectedTransaction(accountId: number) {
           body: payload,
         },
       ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: expectedQueryKeys.list(accountId) })
-    },
+    invalidate: [expectedQueryKeys.list(accountId)],
   })
 }
 
 export function useDeleteExpectedTransaction(accountId: number) {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: (expectedTransactionId: number) =>
       api<void>(`/account/${accountId}/expected-transactions/${expectedTransactionId}`, {
         method: 'DELETE',
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: expectedQueryKeys.list(accountId) })
-    },
+    invalidate: [expectedQueryKeys.list(accountId)],
   })
 }

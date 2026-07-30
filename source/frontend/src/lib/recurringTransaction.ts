@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 
 import { api } from './api'
 import { accountQueryKeys } from './accountHistory'
 import { authQueryKeys } from './auth'
+import { useInvalidatingMutation } from './mutation'
 import type { TransactionCategory, TransactionType } from './transaction'
 
-/** Mirrors `RecurrenceFrequency` in source/backend/models/recurrence_frequency.py. */
 export const RECURRENCE_FREQUENCIES = ['MONTHLY', 'WEEKLY'] as const
 
 export type RecurrenceFrequency = (typeof RECURRENCE_FREQUENCIES)[number]
@@ -56,25 +56,22 @@ export function useRecurringTransactions(accountId: number) {
 }
 
 export function useCreateRecurringTransaction(accountId: number) {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: (payload: RecurringTransactionCreatePayload) =>
       api<RecurringTransactionRead>(`/account/${accountId}/recurring-transactions`, {
         method: 'POST',
         body: payload,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: recurringQueryKeys.list(accountId) })
-      // book_immediately appends a transaction and shifts the balance.
-      queryClient.invalidateQueries({ queryKey: accountQueryKeys.history(accountId) })
-      queryClient.invalidateQueries({ queryKey: authQueryKeys.me })
-    },
+    invalidate: [
+      recurringQueryKeys.list(accountId),
+      accountQueryKeys.history(accountId),
+      authQueryKeys.me,
+    ],
   })
 }
 
 export function useUpdateRecurringTransaction(accountId: number) {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: ({
       recurringTransactionId,
       payload,
@@ -86,21 +83,16 @@ export function useUpdateRecurringTransaction(accountId: number) {
         `/account/${accountId}/recurring-transactions/${recurringTransactionId}`,
         { method: 'PATCH', body: payload },
       ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: recurringQueryKeys.list(accountId) })
-    },
+    invalidate: [recurringQueryKeys.list(accountId)],
   })
 }
 
 export function useDeleteRecurringTransaction(accountId: number) {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: (recurringTransactionId: number) =>
       api<void>(`/account/${accountId}/recurring-transactions/${recurringTransactionId}`, {
         method: 'DELETE',
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: recurringQueryKeys.list(accountId) })
-    },
+    invalidate: [recurringQueryKeys.list(accountId)],
   })
 }

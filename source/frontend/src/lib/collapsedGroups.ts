@@ -1,19 +1,13 @@
 import { useCallback, useState } from 'react'
 
-/**
- * Tracks which overview account groups the user has collapsed. Persisted to
- * localStorage per device (mirrors the pattern in {@link ./theme}).
- *
- * Stored shape: a JSON array of the collapsed groups' keys (the
- * `DisplayGroup.key`, e.g. `group-123`, `ungrouped`). Semantics: a key that is
- * *absent* counts as expanded, so brand-new groups default to open and a
- * missing/corrupt value degrades safely to "everything expanded".
- */
+import { safeStorage } from './storage'
+
 export const STORAGE_KEY = 'collapsedGroups'
 
+const store = safeStorage(STORAGE_KEY, 'local')
+
 export function readCollapsed(): Set<string> {
-  if (typeof window === 'undefined') return new Set()
-  const raw = window.localStorage?.getItem(STORAGE_KEY)
+  const raw = store.read()
   if (!raw) return new Set()
   try {
     const parsed: unknown = JSON.parse(raw)
@@ -25,8 +19,7 @@ export function readCollapsed(): Set<string> {
 }
 
 export function writeCollapsed(keys: Set<string>): void {
-  if (typeof window === 'undefined') return
-  window.localStorage?.setItem(STORAGE_KEY, JSON.stringify([...keys]))
+  store.write(JSON.stringify([...keys]))
 }
 
 export function useCollapsedGroups() {

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useAccountGroupLayout } from '@/lib/accountGroups'
 import type { CredentialRead } from '@/lib/auth'
 import { Checkbox } from '@/components/ui/checkbox'
+import { SelectAllHeader } from '@/components/ui/select-all-header'
 import { AccountOptionContent, AccountSelectPopover } from '@/components/ui/account-select'
 import { accountOptionRowClass, groupAccountsByBank } from '@/components/ui/account-select-utils'
 
@@ -58,27 +59,13 @@ function AccountMultiSelect({
       isEmpty={selectedCount === 0}
       groups={groups}
       header={
-        <div className="border-border/40 flex items-center justify-between gap-2 border-b px-3 py-2 text-xs">
-          <span className="text-muted-foreground">
-            {t('search.accountsCount', { count: selectedCount })}
-          </span>
-          <div className="flex gap-1">
-            <button
-              type="button"
-              className="text-primary hover:text-primary/80 cursor-pointer rounded-md px-2 py-0.5 transition-colors"
-              onClick={() => onChange(allIds)}
-            >
-              {t('search.selectAll')}
-            </button>
-            <button
-              type="button"
-              className="text-primary hover:text-primary/80 cursor-pointer rounded-md px-2 py-0.5 transition-colors"
-              onClick={() => onChange([])}
-            >
-              {t('search.selectNone')}
-            </button>
-          </div>
-        </div>
+        <SelectAllHeader
+          countLabel={t('search.accountsCount', { count: selectedCount })}
+          allLabel={t('search.selectAll')}
+          noneLabel={t('search.selectNone')}
+          onAll={() => onChange(allIds)}
+          onNone={() => onChange([])}
+        />
       }
       renderAccount={(account, group) => {
         const checkboxId = `account-multi-${account.id}`

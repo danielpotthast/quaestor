@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 
 import { api } from './api'
 import { authQueryKeys } from './auth'
+import { useInvalidatingMutation } from './mutation'
 
 export interface SessionRead {
   id: number
@@ -24,24 +25,16 @@ export function useSessions(userId: number) {
 }
 
 export function useRevokeSession(userId: number) {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: (sessionId: number) =>
       api<void>(`/users/${userId}/sessions/${sessionId}`, { method: 'DELETE' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: sessionQueryKeys.list(userId) })
-    },
+    invalidate: [sessionQueryKeys.list(userId)],
   })
 }
 
 export function useRevokeAllOtherSessions(userId: number) {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: () => api<void>(`/users/${userId}/sessions`, { method: 'DELETE' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: sessionQueryKeys.list(userId) })
-      // The current session's last_used_at can change too — keep me in sync.
-      queryClient.invalidateQueries({ queryKey: authQueryKeys.me })
-    },
+    invalidate: [sessionQueryKeys.list(userId), authQueryKeys.me],
   })
 }

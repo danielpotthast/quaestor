@@ -107,8 +107,6 @@ const inputAmountFormatter = new Intl.NumberFormat(DISPLAY_LOCALE, {
   useGrouping: false,
 })
 
-// Renders an amount for editing inside a text input: two decimals, no thousands
-// separators (so the value round-trips through the form without reformatting).
 export function formatAmountForInput(value: number): string {
   return inputAmountFormatter.format(value)
 }
@@ -129,40 +127,32 @@ export function formatPercent(ratio: number): string {
   return percentFormatter.format(ratio)
 }
 
-export function formatDate(d: Date | string): string {
-  return new Intl.DateTimeFormat(activeLocale(), DATE_OPTIONS).format(
+function formatWith(d: Date | string, overrides?: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat(activeLocale(), { ...DATE_OPTIONS, ...overrides }).format(
     typeof d === 'string' ? new Date(d) : d,
   )
+}
+
+export function formatDate(d: Date | string): string {
+  return formatWith(d)
 }
 
 export function formatDateShortWeekday(d: Date | string): string {
-  return new Intl.DateTimeFormat(activeLocale(), { ...DATE_OPTIONS, weekday: 'short' }).format(
-    typeof d === 'string' ? new Date(d) : d,
-  )
+  return formatWith(d, { weekday: 'short' })
 }
 
 export function formatDateWithoutYear(d: Date | string): string {
-  return new Intl.DateTimeFormat(activeLocale(), { ...DATE_OPTIONS, year: undefined }).format(
-    typeof d === 'string' ? new Date(d) : d,
-  )
+  return formatWith(d, { year: undefined })
 }
 
 const IBAN_PATTERN = /^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/
 
-/**
- * If `value` is an IBAN (country code + checksum + 11–30 uppercase alnum,
- * total length 15–34), return it in canonical 4-char groups separated by
- * spaces. Otherwise return `value` untouched — important for freeform fields
- * like `other_party`, which may incidentally start with two letters but be a
- * name, not an IBAN.
- */
 export function formatIban(value: string): string {
   const compact = value.replace(/\s+/g, '')
   if (!IBAN_PATTERN.test(compact)) return value
   return compact.match(/.{1,4}/g)!.join(' ')
 }
 
-/** Whether `value` is an IBAN (see {@link formatIban}), ignoring whitespace. */
 export function isIban(value: string): boolean {
   return IBAN_PATTERN.test(value.replace(/\s+/g, ''))
 }

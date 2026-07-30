@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 
 import { api } from './api'
+import { useInvalidatingMutation } from './mutation'
 
 export interface ApiKeyRead {
   id: number
@@ -26,22 +27,16 @@ export function useApiKeys() {
 }
 
 export function useCreateApiKey() {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: (name: string) =>
       api<ApiKeyCreated>('/api_keys', { method: 'POST', body: { name } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: apiKeyQueryKeys.list })
-    },
+    invalidate: [apiKeyQueryKeys.list],
   })
 }
 
 export function useDeleteApiKey() {
-  const queryClient = useQueryClient()
-  return useMutation({
+  return useInvalidatingMutation({
     mutationFn: (apiKeyId: number) => api<void>(`/api_keys/${apiKeyId}`, { method: 'DELETE' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: apiKeyQueryKeys.list })
-    },
+    invalidate: [apiKeyQueryKeys.list],
   })
 }

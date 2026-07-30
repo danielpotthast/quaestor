@@ -1,9 +1,12 @@
 import { useEffect, useSyncExternalStore } from 'react'
 
 import type { Theme } from './auth'
+import { safeStorage } from './storage'
 
 export const THEME_VALUES: readonly Theme[] = ['LIGHT', 'DARK', 'SYSTEM']
 export const STORAGE_KEY = 'theme'
+
+const store = safeStorage(STORAGE_KEY, 'local')
 
 type Resolved = 'LIGHT' | 'DARK'
 
@@ -26,14 +29,12 @@ export function applyTheme(theme: Theme): void {
 }
 
 export function readStoredTheme(): Theme {
-  if (typeof window === 'undefined') return 'SYSTEM'
-  const raw = window.localStorage?.getItem(STORAGE_KEY)
+  const raw = store.read()
   return THEME_VALUES.includes(raw as Theme) ? (raw as Theme) : 'SYSTEM'
 }
 
 export function writeStoredTheme(theme: Theme): void {
-  if (typeof window === 'undefined') return
-  window.localStorage?.setItem(STORAGE_KEY, theme)
+  store.write(theme)
 }
 
 function subscribePrefersDark(callback: () => void): () => void {
