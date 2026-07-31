@@ -312,6 +312,9 @@ def test_session_without_resumable_websession_requires_reauthentication(
 
 def test_fetch_values_positions_via_ticker_and_routes_cash(monkeypatch: pytest.MonkeyPatch):
     class _FakeClient:
+        def settings(self) -> dict:
+            return {"securitiesAccountNumber": "SEC-ACC-1"}
+
         async def close(self):  # noqa: ASYNC124
             pass
 

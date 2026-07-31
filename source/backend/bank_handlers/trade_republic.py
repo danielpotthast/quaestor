@@ -141,9 +141,13 @@ class _TradeRepublicSession(BankSession):
         logger.debug(f"Trade Republic portfolio fetched: {len(positions)} portfolio position(s)")
 
     async def _fetch_positions(self) -> list[dict]:
+        sec_acc_no = self._trade_republic_client.settings().get("securitiesAccountNumber")
+        if not sec_acc_no:
+            raise ReauthenticationRequiredError("Trade Republic did not return a securities account number.")
         # compactPortfolioByType groups holdings by category (stocksAndETFs, bonds, ...); flatten them.
         response = await self._subscribe_once(
-            payload={"type": "compactPortfolioByType"}, expected_type="compactPortfolioByType"
+            payload={"type": "compactPortfolioByType", "secAccNo": sec_acc_no},
+            expected_type="compactPortfolioByType",
         )
         return [
             position
