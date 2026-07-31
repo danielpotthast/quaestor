@@ -632,10 +632,19 @@
     "chartTypeLabel": "Diagrammtyp",
     "chartType": {
       "bar": "Balken",
-      "pie": "Torte"
+      "pie": "Torte",
+      "trend": "Trend"
     },
     "categories": {
       "title": "Nach Kategorie"
+    },
+    "categoryTrend": {
+      "hint": "Im Vergleich zum Durchschnitt der vorherigen {{range}}",
+      "rangeWeeks": "{{total}} Wochen",
+      "rangeMonths": "{{total}} Monate",
+      "rangeDays": "{{periods}}×{{len}}={{total}} Tage",
+      "periodsLabel": "Vielfaches des oben gewählten Zeitraums",
+      "new": "neu"
     },
     "contracts": {
       "perDay": "Pro Tag",

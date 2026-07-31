@@ -241,6 +241,39 @@ def test_net_worth_range_totals_apply_balance_factor(session_factory: sessionmak
     assert (result.total_at_start, result.total_at_end, result.total_difference) == (50.0, 65.0, 15.0)
 
 
+def test_category_trend_averages_baseline_and_sorts_by_current_amount(session_factory: sessionmaker):
+    date_from = datetime.date(year=2026, month=5, day=11)
+    date_to = datetime.date(year=2026, month=5, day=20)
+    supermarket, fuel = TransactionCategory.SUPERMARKET, TransactionCategory.FUEL
+    seed = {5: 100.0, 5 + 10: 200.0}
+    with session_factory() as session:
+        user, _, account = make_user_and_credential_and_account(session)
+        for offset, supermarket_amount in seed.items():
+            day = date_from + datetime.timedelta(days=5) - datetime.timedelta(days=offset)
+            make_transaction(session, account_id=account.id, amount=-supermarket_amount, date=day, category=supermarket)
+        for offset in [5, 15, 25, 35, 45]:
+            day = date_from + datetime.timedelta(days=5) - datetime.timedelta(days=offset)
+            make_transaction(session, account_id=account.id, amount=-50.0, date=day, category=fuel)
+
+        result = statistics_service.category_trend(
+            db_session=session,
+            user=user,
+            account_ids=[account.id],
+            date_from=date_from,
+            date_to=date_to,
+            direction="OUTGOING",
+            categories=[],
+            baseline_windows=4,
+        )
+
+    by_category = {slice_.category: slice_ for slice_ in result}
+    assert by_category[supermarket].current == 100.0
+    assert by_category[supermarket].baseline == 50.0
+    assert by_category[fuel].current == 50.0
+    assert by_category[fuel].baseline == 50.0
+    assert [slice_.category for slice_ in result] == [supermarket, fuel]
+
+
 def _seed_count_transactions(session: Session, account_id: int) -> None:
     for offset_days in [0, 0, 6, 7, 30]:
         make_transaction(session, account_id=account_id, date=LATEST_DATE + datetime.timedelta(days=offset_days))
