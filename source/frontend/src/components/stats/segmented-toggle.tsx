@@ -1,28 +1,19 @@
 import { cn } from '@/lib/utils'
 
-export interface SegmentedOption<T extends string> {
+export interface SegmentedOption<T extends string | number> {
   value: T
   label: string
 }
 
-export interface SegmentedToggleProps<T extends string> {
-  /** `null` renders with no segment highlighted — used when the parent state
-   *  doesn't (yet) correspond to any option (e.g. a custom date range). */
+export interface SegmentedToggleProps<T extends string | number> {
   value: T | null
   options: SegmentedOption<T>[]
   onChange: (next: T) => void
   ariaLabel: string
-  /** Full-width control: bordered track like the form inputs (h-8, text-sm),
-   *  each button taking an equal share of the width. Default is the compact
-   *  pill used as an inline chart-header control. */
   fullWidth?: boolean
 }
 
-/**
- * Segmented control used for the chart-type (bar/pie) and direction
- * (expense/income) switches. Fully controlled by the parent.
- */
-export function SegmentedToggle<T extends string>({
+export function SegmentedToggle<T extends string | number>({
   value,
   options,
   onChange,

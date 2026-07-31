@@ -1,5 +1,6 @@
 import datetime
 from dataclasses import dataclass
+from statistics import fmean
 
 from sqlalchemy import ColumnElement, case, false, func, select
 from sqlalchemy.orm import Session
@@ -7,6 +8,7 @@ from sqlalchemy.orm import Session
 from source.backend.api.schemas.transactions.statistics import (
     AccountRangeChange,
     CategorySlice,
+    CategoryTrendSlice,
     DailyNetWorth,
     MonthlyCashflow,
     MonthlyNetSavings,
@@ -32,6 +34,8 @@ from source.backend.services.accounts import account_service
 logger = get_logger(__name__)
 
 DEFAULT_TOP_OTHER_PARTIES_LIMIT = 15
+
+DEFAULT_TREND_BASELINE_PERIOD_COUNT = 6
 
 
 @dataclass
@@ -150,6 +154,58 @@ def category_breakdown(
     slices.sort(key=lambda category_slice: category_slice.total, reverse=True)
     logger.debug(f"Computed {direction} category breakdown ({len(slices)} categories) for {user}")
     return slices
+
+
+def category_trend(
+    db_session: Session,
+    user: User,
+    account_ids: list[int],
+    date_from: datetime.date,
+    date_to: datetime.date,
+    direction: StatisticsDirection,
+    categories: list[TransactionCategory],
+    baseline_windows: int = DEFAULT_TREND_BASELINE_PERIOD_COUNT,
+    transaction_types: list[TransactionType] | None = None,
+    linked: StatisticsLinked | None = None,
+) -> list[CategoryTrendSlice]:
+    def breakdown(window_from: datetime.date, window_to: datetime.date) -> dict[TransactionCategory, float]:
+        slices = category_breakdown(
+            db_session=db_session,
+            user=user,
+            account_ids=account_ids,
+            date_from=window_from,
+            date_to=window_to,
+            direction=direction,
+            categories=categories,
+            transaction_types=transaction_types,
+            linked=linked,
+        )
+        return {category_slice.category: category_slice.total for category_slice in slices}
+
+    current = breakdown(window_from=date_from, window_to=date_to)
+
+    # Each baseline window has the same inclusive length as the selected range and tiles backwards without gap or
+    # overlap.
+    window_span = date_to - date_from + datetime.timedelta(days=1)
+    baselines = [
+        breakdown(window_from=date_from - window_span * step, window_to=date_to - window_span * step)
+        for step in range(1, baseline_windows + 1)
+    ]
+
+    trend = [
+        CategoryTrendSlice(
+            category=category,
+            current=current_total,
+            baseline=round(
+                number=fmean([window.get(category, 0.0) for window in baselines]),  # noqa: FKA100
+                ndigits=2,
+            ),
+        )
+        for category, current_total in current.items()
+        if current_total
+    ]
+    logger.debug(f"Computed {direction} category trend ({len(trend)} categories) for {user}")
+    return trend
 
 
 def monthly_cashflow(

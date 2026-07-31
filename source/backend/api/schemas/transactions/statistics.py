@@ -31,6 +31,18 @@ class DirectionalStatisticsQuery(StatisticsQuery):
     direction: StatisticsDirection = "OUTGOING"
 
 
+class CategoryTrendQuery(DirectionalStatisticsQuery):
+    date_from: date
+    date_to: date
+    baseline_windows: int = Field(default=6, ge=1, le=24)
+
+    @model_validator(mode="after")
+    def _check_order(self) -> "CategoryTrendQuery":
+        if self.date_to < self.date_from:
+            raise ValueError("date_to must be on or after date_from")
+        return self
+
+
 class TransactionCountsQuery(StatisticsQuery):
     group_by: TransactionCountsGroupBy = "day"
 
@@ -38,6 +50,12 @@ class TransactionCountsQuery(StatisticsQuery):
 class CategorySlice(BaseModel):
     category: TransactionCategory
     total: float
+
+
+class CategoryTrendSlice(BaseModel):
+    category: TransactionCategory
+    current: float
+    baseline: float
 
 
 class MonthlyCashflow(BaseModel):

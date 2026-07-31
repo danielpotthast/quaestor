@@ -4,6 +4,8 @@ import {
   aggregateTopN,
   averageMonthlyExpenses,
   averageMonthlyIncome,
+  baselineDateRange,
+  baselineRangeDescriptor,
   buildStatsQueryString,
   defaultStatsDateRange,
   fillTransactionCountBuckets,
@@ -52,6 +54,54 @@ describe('buildStatsQueryString', () => {
   it('emits no categories param when none are passed (= all)', () => {
     const params = new URLSearchParams(buildStatsQueryString([42], {}, {}, []))
     expect(params.getAll('categories')).toEqual([])
+  })
+})
+
+describe('baselineDateRange', () => {
+  it('covers the N equal-length windows ending the day before the selected range', () => {
+    // A 7-day selected range (01–07), 3 windows back → 21 days ending 2025-12-31.
+    expect(baselineDateRange('2026-01-01', '2026-01-07', 3)).toEqual({
+      from: '2025-12-11',
+      to: '2025-12-31',
+    })
+  })
+})
+
+describe('baselineRangeDescriptor', () => {
+  it('reports whole months when the range is an exact month span', () => {
+    expect(baselineRangeDescriptor('2026-05-15', '2026-06-15', 6)).toEqual({
+      unit: 'months',
+      len: 1,
+      periods: 6,
+      totalDays: 0,
+    })
+  })
+
+  it('detects a month even when the start clamped to a month-end (2026-06-30 → 2026-07-31)', () => {
+    expect(baselineRangeDescriptor('2026-06-30', '2026-07-31', 6)).toEqual({
+      unit: 'months',
+      len: 1,
+      periods: 6,
+      totalDays: 0,
+    })
+  })
+
+  it('reports whole weeks for a 14-day range', () => {
+    expect(baselineRangeDescriptor('2026-01-01', '2026-01-15', 3)).toEqual({
+      unit: 'weeks',
+      len: 2,
+      periods: 3,
+      totalDays: 0,
+    })
+  })
+
+  it('falls back to days with a computed total when the span is neither', () => {
+    expect(baselineRangeDescriptor('2026-01-01', '2026-01-18', 3)).toEqual({
+      unit: 'days',
+      len: 17,
+      periods: 3,
+      totalDays: 51,
+    })
   })
 })
 

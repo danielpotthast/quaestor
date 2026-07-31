@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from source.backend.api.core.create_router import create_router
 from source.backend.api.schemas.transactions.statistics import (
     CategorySlice,
+    CategoryTrendQuery,
+    CategoryTrendSlice,
     DirectionalStatisticsQuery,
     MonthlyCashflow,
     MonthlyNetSavings,
@@ -33,6 +35,15 @@ def category_statistics(
     db_session: Session = Depends(get_session),
 ) -> list[CategorySlice]:
     return statistics_service.category_breakdown(db_session=db_session, user=current_user, **query.model_dump())
+
+
+@router.get("/categories/trend", response_model=list[CategoryTrendSlice])
+def category_trend_statistics(
+    query: Annotated[CategoryTrendQuery, Query()],
+    current_user: User = Depends(session_service.get_current_user_from_request),
+    db_session: Session = Depends(get_session),
+) -> list[CategoryTrendSlice]:
+    return statistics_service.category_trend(db_session=db_session, user=current_user, **query.model_dump())
 
 
 @router.get("/cashflow", response_model=list[MonthlyCashflow])

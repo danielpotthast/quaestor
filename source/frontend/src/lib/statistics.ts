@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   differenceInCalendarDays,
+  differenceInCalendarMonths,
   eachDayOfInterval,
   eachMonthOfInterval,
   eachWeekOfInterval,
@@ -27,7 +28,7 @@ export const statisticsQueryKeys = {
 
 export type StatsDirection = 'INCOMING' | 'OUTGOING'
 
-export type ChartType = 'bar' | 'pie'
+export type ChartType = 'bar' | 'pie' | 'trend'
 
 export interface StatsFilters {
   date_from?: string // ISO yyyy-mm-dd
@@ -48,6 +49,12 @@ export const RUNWAY_EXCLUDED_CATEGORIES: TransactionCategory[] = ['INVESTMENT', 
 export interface CategorySlice {
   category: TransactionCategory
   total: number
+}
+
+export interface CategoryTrendSlice {
+  category: TransactionCategory
+  current: number
+  baseline: number
 }
 
 export interface MonthlyCashflow {
@@ -197,6 +204,46 @@ export function presetDateRange(
   }
 }
 
+export function baselineDateRange(
+  dateFrom: string,
+  dateTo: string,
+  periods: number,
+): { from: string; to: string } {
+  const from = parseISO(dateFrom)
+  const windowSpanDays = differenceInCalendarDays(parseISO(dateTo), from) + 1
+  return {
+    from: formatDay(subDays(from, windowSpanDays * periods)),
+    to: formatDay(subDays(from, 1)),
+  }
+}
+
+export type BaselineRangeUnit = 'weeks' | 'months' | 'days'
+
+export interface BaselineRangeDescriptor {
+  unit: BaselineRangeUnit
+  len: number
+  periods: number
+  totalDays: number
+}
+
+export function baselineRangeDescriptor(
+  dateFrom: string,
+  dateTo: string,
+  periods: number,
+): BaselineRangeDescriptor {
+  const from = parseISO(dateFrom)
+  const to = parseISO(dateTo)
+  const days = differenceInCalendarDays(to, from)
+  const months = differenceInCalendarMonths(to, from)
+  if (months >= 1 && formatDay(subMonths(to, months)) === dateFrom) {
+    return { unit: 'months', len: months, periods, totalDays: 0 }
+  }
+  if (days >= 7 && days % 7 === 0) {
+    return { unit: 'weeks', len: days / 7, periods, totalDays: 0 }
+  }
+  return { unit: 'days', len: days, periods, totalDays: days * periods }
+}
+
 export function detailPresetRange(
   preset: DetailRangePreset,
   today: Date = new Date(),
@@ -268,6 +315,7 @@ function useStats<T>(args: {
     queryFn: () => api<T>(`/statistics/${path}?${queryString}`),
     enabled: (args.enabled ?? true) && accountIds.length > 0,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -286,6 +334,30 @@ export function useCategoryStats(
     categories,
     typeFilters,
     extra: { direction },
+    enabled,
+  })
+}
+
+export const TREND_PERIOD_OPTIONS: readonly number[] = [3, 6, 12]
+
+export const DEFAULT_TREND_PERIODS = 6
+
+export function useCategoryTrendStats(
+  accountIds: number[],
+  filters: StatsFilters,
+  direction: StatsDirection,
+  categories: TransactionCategory[],
+  baselineWindows: number,
+  typeFilters: StatsTypeFilters = {},
+  enabled: boolean = true,
+) {
+  return useStats<CategoryTrendSlice[]>({
+    path: 'categories/trend',
+    accountIds,
+    filters,
+    categories,
+    typeFilters,
+    extra: { direction, baseline_windows: baselineWindows },
     enabled,
   })
 }

@@ -632,10 +632,19 @@
     "chartTypeLabel": "Chart type",
     "chartType": {
       "bar": "Bar",
-      "pie": "Pie"
+      "pie": "Pie",
+      "trend": "Trend"
     },
     "categories": {
       "title": "By category"
+    },
+    "categoryTrend": {
+      "hint": "Compared to the average of the previous {{range}}",
+      "rangeWeeks": "{{total}} weeks",
+      "rangeMonths": "{{total}} months",
+      "rangeDays": "{{periods}}×{{len}}={{total}} days",
+      "periodsLabel": "Multiple of the range selected above",
+      "new": "new"
     },
     "contracts": {
       "perDay": "Per day",

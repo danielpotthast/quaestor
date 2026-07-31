@@ -17,6 +17,7 @@ import { DateRangeFields } from '@/components/ui/date-range-fields'
 import { Label } from '@/components/ui/label'
 import { TransactionFilterFields } from '@/components/ui/transaction-filter-fields'
 import { CategoryChart } from '@/components/stats/category-chart'
+import { CategoryTrendChart } from '@/components/stats/category-trend-chart'
 import { CashflowChart } from '@/components/stats/cashflow-chart'
 import { ChartCard } from '@/components/stats/chart-card'
 import { ContractsSummaryCard } from '@/components/stats/contracts-summary-card'
@@ -33,14 +34,19 @@ import {
   type TransactionType,
 } from '@/lib/transaction'
 import {
+  baselineDateRange,
+  baselineRangeDescriptor,
   DATE_RANGE_PRESETS,
   defaultStatsDateRange,
   FILTERABLE_CATEGORIES,
+  DEFAULT_TREND_PERIODS,
   matchingPreset,
   presetDateRange,
   TRANSACTION_COUNT_GROUPINGS,
+  TREND_PERIOD_OPTIONS,
   useCashflowStats,
   useCategoryStats,
+  useCategoryTrendStats,
   useNetWorthStats,
   useOtherPartyStats,
   useNetSavingsStats,
@@ -54,6 +60,7 @@ import {
   type TransactionCountsGroupBy,
 } from '@/lib/statistics'
 import { defaultAccountIds } from '@/lib/accounts'
+import { useScrollRestoration } from '@/lib/useScrollRestoration'
 import type { StatsViewProps, StatsViewState } from '@/routes/stats'
 
 export function StatsView({
@@ -64,6 +71,7 @@ export function StatsView({
   onOpenDay,
 }: StatsViewProps) {
   const { t } = useTranslation()
+  useScrollRestoration('stats')
   const defaultIds = defaultAccountIds(credentials)
   const defaults = defaultStatsDateRange()
 
@@ -74,6 +82,23 @@ export function StatsView({
   }
   const chartType: ChartType = search.chart_type ?? 'bar'
   const countGroup: TransactionCountsGroupBy = search.count_group ?? 'day'
+  const trendPeriods = search.trend_periods ?? DEFAULT_TREND_PERIODS
+  const trendRange = baselineRangeDescriptor(
+    filters.date_from ?? defaults.date_from,
+    filters.date_to ?? defaults.date_to,
+    trendPeriods,
+  )
+  const trendRangeKey =
+    trendRange.unit === 'days'
+      ? 'rangeDays'
+      : trendRange.unit === 'weeks'
+        ? 'rangeWeeks'
+        : 'rangeMonths'
+  const trendRangeLabel = t(`stats.categoryTrend.${trendRangeKey}`, {
+    periods: trendRange.periods,
+    len: trendRange.len,
+    total: trendRange.unit === 'days' ? trendRange.totalDays : trendRange.periods * trendRange.len,
+  })
   const direction: StatsDirection = search.direction ?? 'OUTGOING'
   const selectedCategories: TransactionCategory[] = search.categories ?? [...FILTERABLE_CATEGORIES]
   const selectedTypes: TransactionType[] = search.transaction_types ?? [...TRANSACTION_TYPES]
@@ -88,6 +113,7 @@ export function StatsView({
       filters,
       chartType,
       countGroup,
+      trendPeriods,
       direction,
       categories: selectedCategories,
       transactionTypes: selectedTypes,
@@ -126,6 +152,7 @@ export function StatsView({
     sync({ filters: { date_from: from, date_to: to } })
   const applyPreset = (preset: DateRangePreset) => sync({ filters: presetDateRange(preset) })
   const updateChartType = (next: ChartType) => sync({ chartType: next })
+  const updateTrendPeriods = (next: number) => sync({ trendPeriods: next })
   const updateCountGroup = (next: TransactionCountsGroupBy) => sync({ countGroup: next })
   const updateDirection = (next: StatsDirection) => sync({ direction: next })
   const updateCategories = (next: TransactionCategory[]) => sync({ categories: next })
@@ -167,19 +194,45 @@ export function StatsView({
       ...extra,
     })
 
-  // Net worth covers every transaction in the selected accounts over the range
-  // (no category/direction), so its drill omits both to show exactly those.
+  const openBaselineSearch = (category: TransactionCategory) => {
+    const range = baselineDateRange(
+      filters.date_from ?? defaults.date_from,
+      filters.date_to ?? defaults.date_to,
+      trendPeriods,
+    )
+    onOpenSearch({
+      accountIds,
+      dateFrom: range.from,
+      dateTo: range.to,
+      direction,
+      transactionTypes: typesParam,
+      linked,
+      categories: [category],
+    })
+  }
+
   const openNetWorthSearch = () =>
     onOpenSearch({ accountIds, dateFrom: filters.date_from, dateTo: filters.date_to })
 
+  const trendMode = chartType === 'trend'
   const categories = useCategoryStats(
     accountIds,
     filters,
     direction,
     categoriesParam,
     typeFilters,
-    hasSelection,
+    hasSelection && !trendMode,
   )
+  const categoryTrend = useCategoryTrendStats(
+    accountIds,
+    filters,
+    direction,
+    categoriesParam,
+    trendPeriods,
+    typeFilters,
+    hasSelection && trendMode,
+  )
+  const categoryQuery = trendMode ? categoryTrend : categories
   const cashflow = useCashflowStats(accountIds, filters, categoriesParam, typeFilters, hasSelection)
   const transactionCounts = useTransactionCountStats(
     accountIds,
@@ -316,9 +369,9 @@ export function StatsView({
           <ChartCard
             title={t('stats.categories.title')}
             icon={<PieChart className="size-4" aria-hidden="true" />}
-            isLoading={categories.isLoading}
-            isError={categories.isError}
-            isEmpty={(categories.data?.length ?? 0) === 0}
+            isLoading={categoryQuery.isLoading}
+            isError={categoryQuery.isError}
+            isEmpty={(categoryQuery.data?.length ?? 0) === 0}
             action={
               <SegmentedToggle
                 ariaLabel={t('stats.chartTypeLabel')}
@@ -327,17 +380,52 @@ export function StatsView({
                 options={[
                   { value: 'bar', label: t('stats.chartType.bar') },
                   { value: 'pie', label: t('stats.chartType.pie') },
+                  { value: 'trend', label: t('stats.chartType.trend') },
                 ]}
               />
             }
           >
-            <CategoryChart
-              slices={categories.data ?? []}
-              chartType={chartType}
-              hidden={new Set(hiddenCategories)}
-              onToggleHidden={toggleHiddenCategory}
-              onDrill={(category) => openSearch({ categories: [category] })}
-            />
+            {trendMode ? (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-muted-foreground text-xs">
+                    {t('stats.categoryTrend.hint', { range: trendRangeLabel })}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-xs">
+                      {t('stats.categoryTrend.periodsLabel')}
+                    </span>
+                    <SegmentedToggle
+                      ariaLabel={t('stats.categoryTrend.periodsLabel')}
+                      value={trendPeriods}
+                      onChange={updateTrendPeriods}
+                      options={TREND_PERIOD_OPTIONS.map((count) => ({
+                        value: count,
+                        label: String(count),
+                      }))}
+                    />
+                  </div>
+                </div>
+                <CategoryTrendChart
+                  slices={categoryTrend.data ?? []}
+                  direction={direction}
+                  onDrill={(category) =>
+                    openSearch({ categories: [category as TransactionCategory] })
+                  }
+                  onDrillBaseline={(category) =>
+                    openBaselineSearch(category as TransactionCategory)
+                  }
+                />
+              </div>
+            ) : (
+              <CategoryChart
+                slices={categories.data ?? []}
+                chartType={chartType}
+                hidden={new Set(hiddenCategories)}
+                onToggleHidden={toggleHiddenCategory}
+                onDrill={(category) => openSearch({ categories: [category] })}
+              />
+            )}
           </ChartCard>
 
           <ChartCard

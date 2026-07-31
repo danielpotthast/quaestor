@@ -123,8 +123,13 @@ const percentFormatter = new Intl.NumberFormat(DISPLAY_LOCALE, {
   maximumFractionDigits: 1,
 })
 
-export function formatPercent(ratio: number): string {
-  return percentFormatter.format(ratio)
+const wholePercentFormatter = new Intl.NumberFormat(DISPLAY_LOCALE, {
+  style: 'percent',
+  maximumFractionDigits: 0,
+})
+
+export function formatPercent(ratio: number, whole = false): string {
+  return (whole ? wholePercentFormatter : percentFormatter).format(ratio)
 }
 
 function formatWith(d: Date | string, overrides?: Intl.DateTimeFormatOptions): string {

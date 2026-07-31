@@ -25,8 +25,9 @@ const hiddenCategorySchema = z.enum([...TRANSACTION_CATEGORIES, 'OTHER'] as cons
 const searchParamsSchema = z.object({
   date_from: z.string().optional(),
   date_to: z.string().optional(),
-  chart_type: z.enum(['bar', 'pie']).optional(),
+  chart_type: z.enum(['bar', 'pie', 'trend']).optional(),
   count_group: z.enum(['day', 'week', 'month', 'weekday']).optional(),
+  trend_periods: z.coerce.number().int().positive().optional(),
   direction: z.enum(['INCOMING', 'OUTGOING']).optional(),
   transaction_types: oneOrMany(z.enum(TRANSACTION_TYPES)).optional(),
   linked: z.enum(['linked', 'unlinked', 'any', 'none']).optional(),
@@ -66,6 +67,7 @@ function StatsPage() {
             date_to: next.filters.date_to,
             chart_type: next.chartType,
             count_group: next.countGroup,
+            trend_periods: next.trendPeriods,
             direction: next.direction,
             transaction_types:
               next.transactionTypes.length === TRANSACTION_TYPES.length
@@ -122,6 +124,7 @@ export interface StatsViewState {
   filters: StatsFilters
   chartType: ChartType
   countGroup: TransactionCountsGroupBy
+  trendPeriods: number
   direction: StatsDirection
   categories: TransactionCategory[]
   transactionTypes: TransactionType[]
