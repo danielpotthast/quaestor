@@ -98,7 +98,6 @@ TRANSACTION_CATEGORY_MAPPING: dict[TransactionCategory, list[str]] = {
         "ionos",
         "nabu casa",
         "apple com bill",
-        "apple com/bill",
         "apple services",
         "itunes",
         "google workspace",
@@ -272,4 +271,5 @@ def normalize_string(input_string: str) -> str:
         .replace("ü", "ue")
         .replace("ß", "ss")
         .replace(".", " ")
+        .replace("/", " ")
     )
