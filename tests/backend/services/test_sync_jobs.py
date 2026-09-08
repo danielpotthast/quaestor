@@ -204,6 +204,22 @@ def test_start_sync_supersedes_a_running_job_for_the_same_credential(
     assert_log_contains(caplog, message="is superseded by a new sync for the credential 42")
 
 
+def test_start_sync_reuses_a_job_whose_sync_thread_is_still_running(
+    patch_sync: PatchSync, caplog: pytest.LogCaptureFixture
+):
+    running = SyncJob(job_id="running", credential_id=42, status=JobStatus.RUNNING)
+    sync_jobs._jobs[running.job_id] = running
+    patch_sync(SyncResult(status=SyncStatus.COMPLETED))
+
+    async def scenario() -> SyncJob:
+        return await sync_jobs.start_sync(credential_id=42)
+
+    assert asyncio.run(scenario()) is running
+    assert running.status == JobStatus.RUNNING
+    assert len(sync_jobs._jobs) == 1
+    assert_log_contains(caplog, message="is already syncing the credential 42; reusing it")
+
+
 def test_start_sync_leaves_other_credentials_running(patch_sync: PatchSync):
     patch_sync(SyncResult(status=SyncStatus.TWO_FACTOR_REQUIRED, challenge_token=CHALLENGE_TOKEN))
 

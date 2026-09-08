@@ -10,7 +10,7 @@ export const CHECK_HOLD_MS = 1200
 export function useSuccessCheck(succeededAt: number | null): { mounted: boolean; open: boolean } {
   const [mounted, setMounted] = useState(false)
   const [open, setOpen] = useState(false)
-  const shownRef = useRef<number | null>(null)
+  const shownRef = useRef<number | null>(succeededAt)
 
   useEffect(() => {
     let cancelTimers: (() => void) | null = null

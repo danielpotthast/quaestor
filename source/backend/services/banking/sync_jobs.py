@@ -81,18 +81,24 @@ def get_jobs_for_credentials(credential_ids: "frozenset[int] | set[int]") -> lis
     return [job for job in _jobs.values() if job.credential_id in credential_ids]
 
 
-async def _supersede_running_jobs(credential_id: int) -> None:
-    running = [
-        job for job in _jobs.values() if job.credential_id == credential_id and job.status not in TERMINAL_JOB_STATUSSES
-    ]
-    for job in running:
-        logger.info(f"{job} is superseded by a new sync for the credential {credential_id}")
-        await cancel(job_id=job.job_id)
+async def _job_to_continue(credential_id: int) -> "SyncJob | None":
+    for job in list(_jobs.values()):
+        if job.credential_id != credential_id or job.status in TERMINAL_JOB_STATUSSES:
+            continue
+        if job.status is JobStatus.AWAITING_TWO_FACTOR:
+            logger.info(f"{job} is superseded by a new sync for the credential {credential_id}")
+            await cancel(job_id=job.job_id)
+            continue
+        logger.info(f"{job} is already syncing the credential {credential_id}; reusing it")
+        return job
+    return None
 
 
 async def start_sync(credential_id: int) -> SyncJob:
     _cleanup_old_jobs()
-    await _supersede_running_jobs(credential_id)
+    running = await _job_to_continue(credential_id)
+    if running is not None:
+        return running
     job = SyncJob(job_id=secrets.token_urlsafe(16), credential_id=credential_id)
     _jobs[job.job_id] = job
     logger.info(f"{job} started")
