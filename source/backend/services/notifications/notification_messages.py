@@ -60,6 +60,7 @@ _TRANSLATION_CATALOG: dict[str, dict[str, str]] = {
         "account_share.declined.body": "{user} declined “{account}”",
         "credential_sync_failed.title": "Bank connection needs attention",
         "credential_sync_failed.body": "{bank}: automatic sync failed",
+        "also_matched": "Also: {titles}",
         "test.body": "🔔 Test notification → push works!",
     },
     "de": {
@@ -121,6 +122,7 @@ _TRANSLATION_CATALOG: dict[str, dict[str, str]] = {
         "account_share.declined.body": "{user} hat „{account}“ abgelehnt",
         "credential_sync_failed.title": "Bankverbindung benötigt Aufmerksamkeit",
         "credential_sync_failed.body": "{bank}: automatische Synchronisierung fehlgeschlagen",
+        "also_matched": "Zusätzlich: {titles}",
         "test.body": "🔔 Testbenachrichtigung → Push funktioniert!",
     },
 }

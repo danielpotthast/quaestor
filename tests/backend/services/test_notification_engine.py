@@ -353,6 +353,60 @@ def test_expected_transaction_rule_triggers_when_expectation_is_booked(session_f
         )
 
 
+def test_rules_matching_the_same_booking_notify_once(session_factory: sessionmaker, caplog: pytest.LogCaptureFixture):
+    with session_factory() as db_session:
+        user, credential, account = make_user_and_credential_and_account(db_session)
+        expected = make_transaction(
+            db_session,
+            account_id=account.id,
+            amount=DEFAULT_AMOUNT,
+            other_party="Landlord",
+            expected=True,
+            pending=True,
+        )
+        _make_notification_rule(
+            db_session,
+            user_id=user.id,
+            trigger=NotificationTrigger.TRANSACTION,
+            account_ids=[account.id],
+            name="Large booking",
+            categories=ALL_CATEGORIES,
+            types=ALL_TYPES,
+        )
+        _make_notification_rule(
+            db_session,
+            user_id=user.id,
+            trigger=NotificationTrigger.TRANSACTION,
+            account_ids=[account.id],
+            name="Rent paid",
+            categories=ALL_CATEGORIES,
+            types=ALL_TYPES,
+        )
+        _make_notification_rule(
+            db_session,
+            user_id=user.id,
+            trigger=NotificationTrigger.EXPECTED_TRANSACTION,
+            account_ids=[account.id],
+        )
+        db_session.flush()
+        snapshot = notification_engine.capture_sync_snapshot(credential)
+        booking = make_transaction(db_session, account_id=account.id, amount=DEFAULT_AMOUNT, other_party="Landlord")
+        booking.matched_expected_id = expected.id
+        account.transactions.remove(expected)
+
+        notifications = notification_engine.collect_notifications(
+            db_session=db_session, credential=credential, snapshot=snapshot
+        )
+
+        assert_one_notification(
+            notifications=notifications,
+            title="Large booking",
+            body=f"“{ACCOUNT_IBAN}”: 50,00 € · Landlord\nAlso: Rent paid & Expected transaction booked",
+            url=f"/transactions/{booking.id}",
+        )
+        assert_log_contains(caplog, message=f"2 further rule(s) matched /transactions/{booking.id}")
+
+
 def test_expected_transaction_rule_quiet_when_nothing_booked(session_factory: sessionmaker):
     with session_factory() as db_session:
         user, credential, account = make_user_and_credential_and_account(db_session)

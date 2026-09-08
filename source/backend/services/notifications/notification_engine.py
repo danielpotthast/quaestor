@@ -1,5 +1,6 @@
 import datetime
-from dataclasses import dataclass
+from collections import defaultdict
+from dataclasses import dataclass, replace
 from urllib.parse import urlencode
 
 from sqlalchemy import select
@@ -38,6 +39,7 @@ from source.backend.services.transactions import statistics_service
 logger = get_logger(__name__)
 
 AMOUNT_TOLERANCE = 0.01  # Two amounts less than a cent apart are the same amount
+_TRANSACTION_URL_PREFIX = "/transactions/"
 
 _ALL_CATEGORIES = [category.value for category in TransactionCategory]
 _ALL_TYPES = [transaction_type.value for transaction_type in TransactionType]
@@ -143,11 +145,40 @@ def collect_notifications(db_session: Session, credential: Credential, snapshot:
                 logger.info(f"{rule} matched on {account}: {len(rule_notifications)} notification(s)")
             notifications.extend(rule_notifications)
 
+    notifications = _one_notification_per_transaction(notifications=notifications, language=language)
     if notifications:
         logger.info(f"Collected {len(notifications)} notification(s) from {credential}")
     else:
         logger.debug(f"No notifications triggered from {credential}")
     return notifications
+
+
+def _one_notification_per_transaction(notifications: list[Notification], language: str) -> list[Notification]:
+    # Several rules can match the same booking --> merge them into one
+    titles_of_url: dict[str, list[str]] = defaultdict(list)
+    for notification in notifications:
+        url = notification.url or ""
+        if url.startswith(_TRANSACTION_URL_PREFIX):
+            titles_of_url[url].append(notification.title)
+
+    kept: list[Notification] = []
+    used_urls: set[str] = set()
+    for notification in notifications:
+        url = notification.url or ""
+        if not url.startswith(_TRANSACTION_URL_PREFIX):
+            kept.append(notification)
+            continue
+        if url in used_urls:
+            continue
+        used_urls.add(url)
+        # dict.fromkeys keeps the order and folds rules that carry the same title into one mention
+        others = [title for title in dict.fromkeys(titles_of_url[url][1:]) if title != notification.title]
+        if others:
+            logger.info(f"{len(others)} further rule(s) matched {url}; folding {others} into one notification")
+            also = notification_messages.translate(language, key="also_matched", titles=" & ".join(others))
+            notification = replace(notification, body=f"{notification.body}\n{also}")
+        kept.append(notification)
+    return kept
 
 
 def evaluate_overdue_contracts(db_session: Session, today: datetime.date) -> None:
@@ -857,7 +888,7 @@ def _transaction_url(account: Account, transaction: Transaction | None) -> str:
     # A transaction that was never flushed has no id to link to, so fall back to its account.
     if transaction is None or transaction.id is None:
         return f"/account/{account.id}"
-    return f"/transactions/{transaction.id}"
+    return f"{_TRANSACTION_URL_PREFIX}{transaction.id}"
 
 
 def _search_url(
