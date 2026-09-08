@@ -101,10 +101,6 @@ function TransactionDetailPage() {
   const viewingLinkSourceItself =
     linkSource?.accountId === accountId && linkSource?.transactionId === transactionId
   const canStartLink = linkSource === null && !query.data.pending && isOwner
-  const allAccountIds =
-    user?.credentials
-      .filter((credential) => !credential.shared_from)
-      .flatMap((credential) => credential.accounts.map((a) => a.id)) ?? []
 
   return (
     <TransactionDetailView
@@ -137,12 +133,7 @@ function TransactionDetailPage() {
       }
       linkSection={
         canStartLink ? (
-          <LinkStartSection
-            accountId={accountId}
-            transactionId={transactionId}
-            amount={query.data.amount}
-            allAccountIds={allAccountIds}
-          />
+          <LinkStartSection accountId={accountId} transactionId={transactionId} />
         ) : undefined
       }
       linkConfirmSection={
@@ -157,27 +148,16 @@ function TransactionDetailPage() {
 function LinkStartSection({
   accountId,
   transactionId,
-  amount,
-  allAccountIds,
 }: {
   accountId: number
   transactionId: number
-  amount: number
-  allAccountIds: number[]
 }) {
   const { t } = useTranslation()
-  const counterpartAmount = -amount
   return (
     <Button asChild variant="outline" size="sm" className="self-start">
       <Link
         to="/search"
-        search={{
-          account_ids: allAccountIds,
-          link_account_id: accountId,
-          link_transaction_id: transactionId,
-          amount_from: counterpartAmount,
-          amount_to: counterpartAmount,
-        }}
+        search={{ link_account_id: accountId, link_transaction_id: transactionId }}
       >
         <ArrowLeftRight className="size-4" aria-hidden="true" />
         {t('transaction.linkStart')}
