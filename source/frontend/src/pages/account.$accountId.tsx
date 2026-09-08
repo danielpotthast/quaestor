@@ -952,7 +952,8 @@ function ExpectedTransactionRow({
     <li className="flex items-center gap-3 px-3 py-3">
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm font-medium">
-          {expectation.other_party?.trim() || t('expectedTransactions.anyParty')}
+          {expectation.other_party?.trim() ||
+            t(negative ? 'expectedTransactions.anyRecipient' : 'expectedTransactions.anySender')}
         </span>
         {expectation.note?.trim() ? (
           <span className="text-muted-foreground truncate text-xs">{expectation.note.trim()}</span>
