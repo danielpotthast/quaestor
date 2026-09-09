@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, List
 
 from sqlalchemy import JSON, DateTime
@@ -7,7 +7,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from source.backend.bank_handlers import BankHandler, BankProvider, handler_for
-from source.backend.bank_handlers.base import BankSession, FetchedAccount
+from source.backend.bank_handlers.base import BankSession, FetchedAccount, FetchedTransaction
 from source.backend.exceptions import JobErrorCode
 from source.backend.helpers import get_key_of_transaction, index_transactions_for_matching, utc_now
 from source.backend.logging_utils import get_logger
@@ -17,6 +17,8 @@ from source.backend.models.transactions.transaction import Transaction
 from source.backend.services.banking import bank_catalog
 
 logger = get_logger(__name__)
+
+PENDING_BOOKED_MATCH_WINDOW = timedelta(days=7)
 
 if TYPE_CHECKING:
     from source.backend.models.auth.user import User
@@ -168,10 +170,12 @@ class Credential(Base):
             transaction for transaction in account.transactions if not transaction.expected
         )
         created_transactions = 0
+        fetched_pending_transactions = []
 
         for fetched_transaction in fetched_transactions:
             if fetched_transaction.pending:
-                account.transactions.append(Transaction.from_fetched(fetched_transaction))
+                # Held back until the loop is done and every booking of this sync sits on the account
+                fetched_pending_transactions.append(fetched_transaction)
                 continue
 
             reference = fetched_transaction.bank_reference
@@ -193,10 +197,37 @@ class Credential(Base):
                 existing_transactions[reference] = transaction
             created_transactions += 1
 
+        Credential._add_pending_transactions(account=account, fetched_transactions=fetched_pending_transactions)
         Credential._match_expected_transactions(account=account)
         return created_transactions
 
     _TOLERANCE_FOR_EXACT_COMPARISON = 0.005
+
+    @staticmethod
+    def _add_pending_transactions(account: Account, fetched_transactions: list[FetchedTransaction]) -> None:
+        # Some banks (e.g. ING) keep a pending transaction in their pending list for days after its booking has
+        # arrived, so taking that list at face value leaves the transaction on the account twice. The two
+        # never share a key (the bank might rewrite purpose and other_party on booking) so match them on the
+        # amount within a few days instead.
+        unclaimed_bookings = [
+            transaction for transaction in account.transactions if not transaction.pending and not transaction.expected
+        ]
+        for fetched_transaction in fetched_transactions:
+            candidates = [
+                booking
+                for booking in unclaimed_bookings
+                if abs(booking.amount - fetched_transaction.amount) <= Credential._TOLERANCE_FOR_EXACT_COMPARISON
+                and abs(booking.date - fetched_transaction.date) <= PENDING_BOOKED_MATCH_WINDOW
+            ]
+            if not candidates:
+                account.transactions.append(Transaction.from_fetched(fetched_transaction))
+                continue
+            booking = min(candidates, key=lambda candidate: abs(candidate.date - fetched_transaction.date))
+            unclaimed_bookings.remove(booking)
+            logger.debug(
+                f"Dropping pending {fetched_transaction.amount} of {fetched_transaction.date} on {account}: "
+                f"already booked on {booking.date} as transaction {booking.id}"
+            )
 
     @staticmethod
     def _match_expected_transactions(account: Account) -> None:

@@ -387,7 +387,7 @@ def test_sync_rebuilds_pending_each_time_without_accumulating(session_factory: s
         transactions={
             ACCOUNT_IBAN: [
                 _booked_transaction(amount=-DEFAULT_AMOUNT, day=10),
-                _pending_transaction(amount=-DEFAULT_AMOUNT, day=11),
+                _pending_transaction(amount=-SECOND_AMOUNT, day=11),
             ]
         },
     )
@@ -401,7 +401,7 @@ def test_sync_rebuilds_pending_each_time_without_accumulating(session_factory: s
         # Next sync: the pending entry has drifted (new date) --> the stale one must be wiped, not kept
         bank._transactions[ACCOUNT_IBAN] = [
             _booked_transaction(amount=-DEFAULT_AMOUNT, day=10),
-            _pending_transaction(amount=-DEFAULT_AMOUNT, day=13),
+            _pending_transaction(amount=-SECOND_AMOUNT, day=13),
         ]
         credential.sync(handler)
         session.commit()
@@ -441,6 +441,85 @@ def test_pending_that_becomes_booked_is_not_duplicated(session_factory: sessionm
         assert transactions[0].purpose == "booked"
 
 
+def test_pending_still_reported_after_its_booking_arrived_is_dropped(session_factory: sessionmaker):
+    credential_id = persist_credential_with_new_user(session_factory)
+    handler = build_handler(
+        FakeBankSession(
+            accounts=[FetchedAccount(name=ACCOUNT_IBAN)],
+            balances={ACCOUNT_IBAN: 0.0},
+            transactions={
+                ACCOUNT_IBAN: [
+                    _booked_transaction(amount=DEFAULT_AMOUNT, day=6),
+                    _pending_transaction(amount=DEFAULT_AMOUNT, day=5),
+                ]
+            },
+        )
+    )
+
+    with session_factory() as session:
+        credential = session.get(entity=Credential, ident=credential_id)
+        credential.sync(handler)
+        session.commit()
+
+    with session_factory() as session:
+        transactions = session.get(entity=Credential, ident=credential_id).accounts[0].transactions
+        assert len(transactions) == 1
+        assert not transactions[0].pending
+        assert transactions[0].purpose == "booked"
+
+
+def test_pending_is_kept_when_its_booking_is_outside_the_match_window(session_factory: sessionmaker):
+    credential_id = persist_credential_with_new_user(session_factory)
+    handler = build_handler(
+        FakeBankSession(
+            accounts=[FetchedAccount(name=ACCOUNT_IBAN)],
+            balances={ACCOUNT_IBAN: 0.0},
+            transactions={
+                ACCOUNT_IBAN: [
+                    _booked_transaction(amount=DEFAULT_AMOUNT, day=5),
+                    _pending_transaction(amount=DEFAULT_AMOUNT, day=14),
+                ]
+            },
+        )
+    )
+
+    with session_factory() as session:
+        credential = session.get(entity=Credential, ident=credential_id)
+        credential.sync(handler)
+        session.commit()
+
+    with session_factory() as session:
+        transactions = session.get(entity=Credential, ident=credential_id).accounts[0].transactions
+        assert {tx.pending for tx in transactions} == {True, False}
+
+
+def test_only_one_of_two_identical_pendings_is_claimed_by_a_single_booking(session_factory: sessionmaker):
+    credential_id = persist_credential_with_new_user(session_factory)
+    handler = build_handler(
+        FakeBankSession(
+            accounts=[FetchedAccount(name=ACCOUNT_IBAN)],
+            balances={ACCOUNT_IBAN: 0.0},
+            transactions={
+                ACCOUNT_IBAN: [
+                    _booked_transaction(amount=-DEFAULT_AMOUNT, day=5),
+                    _pending_transaction(amount=-DEFAULT_AMOUNT, day=6),
+                    _pending_transaction(amount=-DEFAULT_AMOUNT, day=6),
+                ]
+            },
+        )
+    )
+
+    with session_factory() as session:
+        credential = session.get(entity=Credential, ident=credential_id)
+        credential.sync(handler)
+        session.commit()
+
+    with session_factory() as session:
+        transactions = session.get(entity=Credential, ident=credential_id).accounts[0].transactions
+        assert len(transactions) == 2
+        assert sum(1 for tx in transactions if tx.pending) == 1
+
+
 def test_pending_transactions_are_excluded_from_balance_history(session_factory: sessionmaker):
     credential_id = persist_credential_with_new_user(session_factory)
     handler = build_handler(
@@ -450,7 +529,7 @@ def test_pending_transactions_are_excluded_from_balance_history(session_factory:
             transactions={
                 ACCOUNT_IBAN: [
                     _booked_transaction(amount=-DEFAULT_AMOUNT, day=10),
-                    _pending_transaction(amount=-DEFAULT_AMOUNT, day=12),
+                    _pending_transaction(amount=-SECOND_AMOUNT, day=12),
                 ]
             },
         )
