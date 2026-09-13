@@ -1,6 +1,7 @@
 import asyncio
 import json
 import shutil
+import tarfile
 import tempfile
 from collections import defaultdict
 from contextlib import contextmanager
@@ -119,6 +120,7 @@ async def _run_command(config_dir: Path, args: tuple[str, ...]) -> dict:
         error = payload.get("error") if isinstance(payload, dict) else None
         error_code = error.get("code") if isinstance(error, dict) else None
         if error_code in _REAUTHENTICATION_ERROR_CODES:
+            logger.warning(f"`{command_text}` needs a new login ({error_code})")
             raise ReauthenticationRequiredError(
                 f"`{command_text}` was rejected ({error_code}); re-authentication required."
             )
@@ -381,6 +383,7 @@ def _share_moves_by_isin(raw_transactions: list[dict]) -> dict[str, list[tuple[d
 
 class ScalableCapitalHandler(BankHandler):
     CREDENTIAL_FIELDS: tuple[str, ...] = ()
+    SUPPORTS_UNATTENDED_SYNC = True  # the CLI refreshes its tokens on its own
 
     def begin_two_factor_challenge(self, credential_id: int) -> TwoFactorChallenge:
         ensure_cli_binary_available()
@@ -411,7 +414,16 @@ class ScalableCapitalHandler(BankHandler):
                 scalable_capital_login.write_session_state(config_dir=config_dir, session_state=self.session_state)
             except ValueError as e:
                 raise ReauthenticationRequiredError(f"Session state is unusable: {e}") from e
-            yield _ScalableCapitalSession(config_dir=config_dir)
-            self.session_state = scalable_capital_login.read_session_state(config_dir)
+            try:
+                yield _ScalableCapitalSession(config_dir=config_dir)
+            finally:
+                # `sc` rotates the refresh token, so keep it on failure too
+                self._save_session_state(config_dir)
         finally:
             shutil.rmtree(config_dir, ignore_errors=True)
+
+    def _save_session_state(self, config_dir: Path) -> None:
+        try:
+            self.session_state = scalable_capital_login.read_session_state(config_dir)
+        except (OSError, tarfile.TarError):
+            logger.exception("Could not read back the rotated session state; keeping the previous one")

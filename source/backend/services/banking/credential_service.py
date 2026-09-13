@@ -1,4 +1,5 @@
 import re
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
@@ -34,6 +35,10 @@ logger = get_logger(__name__)
 
 TWO_FACTOR_REEVALUATION_MIN_GAP = timedelta(hours=24)
 APP_OPEN_SYNC_MIN_GAP = timedelta(minutes=10)
+
+# Quaestor runs as a single process, so in-memory locks suffice
+_sync_locks: dict[int, threading.Lock] = {}
+_sync_locks_guard = threading.Lock()
 
 
 class SyncStatus(str, Enum):
@@ -206,6 +211,13 @@ def delete_credential(db_session: Session, credential: Credential) -> None:
     logger.info(f"Deleted {credential}")
 
 
+def _sync_lock(credential_id: int) -> threading.Lock:
+    with _sync_locks_guard:
+        if credential_id not in _sync_locks:
+            _sync_locks[credential_id] = threading.Lock()
+        return _sync_locks[credential_id]
+
+
 def sync_credential(
     db_session: Session,
     credential_id: int,
@@ -213,15 +225,36 @@ def sync_credential(
     is_cancelled: CancelCheck | None = None,
 ) -> SyncResult:
     logger.debug(f"Sync requested for credential {credential_id}")
-    credential = get_credential(db_session=db_session, credential_id=credential_id)
-    snapshot = notification_engine.capture_sync_snapshot(credential)
-    result = sync_credential_object(
-        credential=credential,
-        notify_two_factor_state=notify_two_factor_state,
-        is_cancelled=is_cancelled,
-        reevaluate_two_factor_requirement=True,
-    )
-    return _finalize_sync(db_session=db_session, credential=credential, snapshot=snapshot, result=result)
+    # Waits for e.g. a cancelled sync whose thread still runs
+    with _sync_lock(credential_id):
+        credential = get_credential(db_session=db_session, credential_id=credential_id)
+        snapshot = notification_engine.capture_sync_snapshot(credential)
+        try:
+            result = sync_credential_object(
+                credential=credential,
+                notify_two_factor_state=notify_two_factor_state,
+                is_cancelled=is_cancelled,
+                reevaluate_two_factor_requirement=True,
+            )
+        except Exception:
+            _persist_session_state_of_failed_sync(db_session=db_session, credential=credential)
+            raise
+        return _finalize_sync(db_session=db_session, credential=credential, snapshot=snapshot, result=result)
+
+
+def _persist_session_state_of_failed_sync(
+    db_session: Session, credential: Credential, kept_fields: tuple[str, ...] = ("session_state",)
+) -> None:
+    # Drops half-synced data but keeps e.g. a rotated refresh token
+    try:
+        kept_values = {name: getattr(credential, name) for name in kept_fields}
+        db_session.rollback()
+        for name, value in kept_values.items():
+            setattr(credential, name, value)
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+        logger.exception(f"Could not persist the session state of the failed sync of {credential}")
 
 
 def _finalize_sync(
@@ -252,6 +285,7 @@ def sync_credential_object(
     notify_two_factor_state: TwoFactorStateCallback | None = None,
     is_cancelled: CancelCheck | None = None,
     reevaluate_two_factor_requirement: bool = False,
+    start_interactive_challenge: bool = True,
 ) -> SyncResult:
     credential.last_sync_attempt_timestamp = utc_now()
     db_session = object_session(credential)
@@ -263,6 +297,7 @@ def sync_credential_object(
             notify_two_factor_state=notify_two_factor_state,
             is_cancelled=is_cancelled,
             reevaluate_two_factor_requirement=reevaluate_two_factor_requirement,
+            start_interactive_challenge=start_interactive_challenge,
         )
     except Exception as e:
         credential.last_sync_error = error_message_for(e)
@@ -279,6 +314,7 @@ def _sync_credential_object(
     notify_two_factor_state: TwoFactorStateCallback | None = None,
     is_cancelled: CancelCheck | None = None,
     reevaluate_two_factor_requirement: bool = False,
+    start_interactive_challenge: bool = True,
 ) -> SyncResult:
     logger.info(f"Syncing {credential}")
     handler = credential.handler
@@ -302,6 +338,9 @@ def _sync_credential_object(
     try:
         credential.sync(handler)
     except ReauthenticationRequiredError:
+        if not start_interactive_challenge:
+            logger.warning(f"{credential} requires re-authentication; nobody is around to start it")
+            raise
         challenge = handler.begin_two_factor_challenge(credential_id=credential.id)
         if challenge is None:
             raise
@@ -314,8 +353,10 @@ def _sync_credential_object(
             authorization_url=challenge.authorization_url,
             device_code=challenge.device_code,
         )
+    finally:
+        # Also on failure: the handler may have rotated its session
+        credential.session_state = handler.session_state
 
-    credential.session_state = handler.session_state
     if reevaluate_two_factor_requirement and _should_reevaluate_two_factor(previous_fetching_timestamp):
         if credential.requires_two_factor_authentication != two_factor_used:
             logger.info(
@@ -355,20 +396,40 @@ def sync_all_due_credentials(db_session: Session) -> None:
             skipped += 1
             continue
 
+        sync_lock = _sync_lock(credential.id)
+        if not sync_lock.acquire(blocking=False):
+            logger.info(f"Skipping periodic sync of {credential}; another sync is running")
+            skipped += 1
+            continue
+
         already_failing = credential.last_sync_error_code is not None
         try:
+            # A sync since this run started may have rotated the session
+            db_session.refresh(credential)
             snapshot = notification_engine.capture_sync_snapshot(credential)
-            sync_credential_object(credential=credential)
+            sync_credential_object(credential=credential, start_interactive_challenge=False)
             synced += 1
             synced_users[credential.user_id] = credential.user
             synced_credentials.append((credential, snapshot))
         except Exception:
             failed += 1
+            # Roll back first, logging the credential needs a usable session
+            _persist_session_state_of_failed_sync(
+                db_session=db_session,
+                credential=credential,
+                kept_fields=("session_state", "last_sync_error", "last_sync_error_code"),
+            )
             logger.exception(f"Periodic sync failed for {credential}")
             if not already_failing:
                 failure_notifications.append(
                     (credential.user, notification_engine.credential_sync_failed_notification(credential))
                 )
+        finally:
+            try:
+                # Commit before unlocking so the next sync reads the new session
+                db_session.commit()
+            finally:
+                sync_lock.release()
     for user in synced_users.values():
         transfer_detection.detect_transfers_for_user(db_session=db_session, user=user)
         contract_detection_service.detect_contracts_for_user(db_session=db_session, user=user)
@@ -397,13 +458,21 @@ def confirm_two_factor(
     code: str,
     notify_two_factor_state: TwoFactorStateCallback | None = None,
 ) -> SyncResult:
-    credential = get_credential(db_session=db_session, credential_id=credential_id)
-    logger.info(f"Confirming 2FA for {credential}")
-    handler = credential.handler
-    handler.notify_two_factor_state = notify_two_factor_state
-    credential.session_state = handler.complete_two_factor_challenge(
-        challenge_token=challenge_token, credential_id=credential_id, code=code
-    )
-    snapshot = notification_engine.capture_sync_snapshot(credential)
-    result = sync_credential_object(credential=credential)
-    return _finalize_sync(db_session=db_session, credential=credential, snapshot=snapshot, result=result)
+    with _sync_lock(credential_id):
+        credential = get_credential(db_session=db_session, credential_id=credential_id)
+        logger.info(f"Confirming 2FA for {credential}")
+        handler = credential.handler
+        handler.notify_two_factor_state = notify_two_factor_state
+        credential.session_state = handler.complete_two_factor_challenge(
+            challenge_token=challenge_token, credential_id=credential_id, code=code
+        )
+        snapshot = notification_engine.capture_sync_snapshot(credential)
+        try:
+            result = sync_credential_object(credential=credential)
+        except Exception:
+            _persist_session_state_of_failed_sync(db_session=db_session, credential=credential)
+            raise
+        if result.status == SyncStatus.COMPLETED and handler.SUPPORTS_UNATTENDED_SYNC:
+            logger.info(f"{credential} can sync unattended again after the confirmed login")
+            credential.requires_two_factor_authentication = False
+        return _finalize_sync(db_session=db_session, credential=credential, snapshot=snapshot, result=result)

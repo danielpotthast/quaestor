@@ -624,7 +624,7 @@ def _patch_cli_output(
     argnames="error_code", argvalues=["no_session", "refresh_relogin_required", "auth_grant_not_enabled"]
 )
 def test_run_command_maps_auth_error_codes_to_reauthentication_required(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, error_code: str
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture, error_code: str
 ):
     _patch_cli_output(
         monkeypatch=monkeypatch,
@@ -636,6 +636,7 @@ def test_run_command_maps_auth_error_codes_to_reauthentication_required(
         asyncio.run(scalable_capital._run_command(config_dir=tmp_path, args=("broker", "holdings")))
 
     assert f"`{HOLDINGS_COMMAND}` was rejected ({error_code})" in str(error.value)
+    assert_log_contains(caplog, message=f"`{HOLDINGS_COMMAND}` needs a new login ({error_code})")
 
 
 def test_run_command_does_not_ask_for_a_relogin_on_a_config_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
@@ -806,6 +807,51 @@ def test_session_restores_the_config_dir_and_stores_the_refreshed_state(monkeypa
     # The refreshed CLI state is read back so a rotated refresh token survives the sync.
     assert handler.session_state == {"archive": SECOND_SESSION_ARCHIVE}
     assert not config_dir.exists()
+
+
+def test_session_stores_the_refreshed_state_even_when_the_sync_fails(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(target=scalable_capital, name="ensure_cli_binary_available", value=lambda: None)
+    monkeypatch.setattr(target=scalable_capital_login, name="write_session_state", value=lambda **_: None)
+    monkeypatch.setattr(
+        target=scalable_capital_login,
+        name="read_session_state",
+        value=lambda config_dir: {"archive": SECOND_SESSION_ARCHIVE},
+    )
+    handler = _handler()
+    handler.session_state = {"archive": SESSION_ARCHIVE}
+
+    config_dirs: list[Path] = []
+    with pytest.raises(RuntimeError, match="rate-limited"):
+        with handler.session() as session:
+            config_dirs.append(session._config_dir)
+            raise RuntimeError("rate-limited after the refresh token was rotated")
+
+    # The old refresh token is invalid once rotated
+    assert handler.session_state == {"archive": SECOND_SESSION_ARCHIVE}
+    assert not config_dirs[0].exists()
+
+
+def test_session_keeps_the_previous_state_when_it_cannot_be_read_back(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    def failing_read(config_dir: Path) -> dict:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(target=scalable_capital, name="ensure_cli_binary_available", value=lambda: None)
+    monkeypatch.setattr(target=scalable_capital_login, name="write_session_state", value=lambda **_: None)
+    monkeypatch.setattr(target=scalable_capital_login, name="read_session_state", value=failing_read)
+    handler = _handler()
+    handler.session_state = {"archive": SESSION_ARCHIVE}
+
+    with handler.session():
+        pass
+
+    assert handler.session_state == {"archive": SESSION_ARCHIVE}
+    assert_log_contains(caplog, message="Could not read back the rotated session state")
+
+
+def test_handler_supports_unattended_sync():
+    assert ScalableCapitalHandler.SUPPORTS_UNATTENDED_SYNC is True
 
 
 def test_session_with_an_unusable_session_state_requires_reauthentication(monkeypatch: pytest.MonkeyPatch):

@@ -12,6 +12,8 @@ scripts/wip/
 
 *.har
 *.pem
+*.csr
+*.p12
 *.html
 
 # pytest-cov

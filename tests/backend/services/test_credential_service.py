@@ -1,8 +1,9 @@
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import object_session, sessionmaker
 
 from source.backend.bank_handlers import BankProvider
 from source.backend.bank_handlers.base import BankHandler
@@ -18,7 +19,7 @@ from source.backend.exceptions import (
 )
 from source.backend.models.auth.user import User
 from source.backend.models.banking.credential import Credential
-from source.backend.services.banking import credential_service, trade_republic_login
+from source.backend.services.banking import credential_service, scalable_capital_login, trade_republic_login
 from source.backend.services.notifications import notification_engine
 from tests.backend.conftest import (
     APPLICATION_ID,
@@ -140,7 +141,7 @@ def test_sync_all_due_credentials_counts_synced_skipped_failed(
     manual = persist_credential(session_factory, user_id=user_id, bank=BankProvider.MANUAL)
     failing = persist_credential(session_factory, user_id=user_id)
 
-    def fake_sync(credential: Credential):
+    def fake_sync(credential: Credential, **_: object):
         if credential.id == failing:
             raise RuntimeError("bank is not reachable")
         return credential_service.SyncResult(status=credential_service.SyncStatus.COMPLETED)
@@ -366,7 +367,7 @@ def test_sync_all_due_credentials_notifies_only_on_the_first_of_repeated_failure
     user_id = create_user(session_factory).id
     credential_id = persist_credential(session_factory, user_id=user_id)
 
-    def fake_sync(credential: Credential):
+    def fake_sync(credential: Credential, **_: object):
         # Mirrors what the real sync_credential_object records before the error propagates.
         credential.last_sync_error = "the bank rejected the login"
         credential.last_sync_error_code = JobErrorCode.INVALID_CREDENTIALS
@@ -572,6 +573,218 @@ def test_confirm_two_factor_completes_login_and_syncs_credential(
     assert_log_contains(caplog, message="Confirming 2FA for")
 
 
+def _stored_credential(session_factory: sessionmaker, credential_id: int) -> Credential:
+    with session_factory() as session:
+        credential = session.get(entity=Credential, ident=credential_id)
+        session.expunge(credential)
+        return credential
+
+
+def test_sync_credential_persists_the_rotated_session_state_but_not_the_partial_sync_after_a_failure(
+    session_factory: sessionmaker, monkeypatch: pytest.MonkeyPatch
+):
+    user_id = create_user(session_factory).id
+    credential_id = persist_credential(session_factory, user_id=user_id)
+
+    def failing_sync(self: Credential, handler: BankHandler) -> None:
+        handler.session_state = {"archive": "rotated"}
+        self.sync_enabled = False  # stands in for half-synced changes that must be rolled back
+        raise RuntimeError("rate-limited")
+
+    monkeypatch.setattr(target=Credential, name="sync", value=failing_sync)
+
+    with session_factory() as session:
+        with pytest.raises(RuntimeError, match="rate-limited"):
+            credential_service.sync_credential(db_session=session, credential_id=credential_id)
+
+    stored = _stored_credential(session_factory, credential_id=credential_id)
+    assert stored.session_state == {"archive": "rotated"}
+    assert stored.sync_enabled is True
+    # A manual sync reports its failure through the job, not the credential
+    assert stored.last_sync_error is None
+
+
+class _LockWithSideEffects:
+    def __init__(self, on_acquire: Callable[[], None], on_release: Callable[[], None]):
+        self._on_acquire = on_acquire
+        self._on_release = on_release
+
+    def acquire(self, blocking: bool = True) -> bool:
+        self._on_acquire()
+        return True
+
+    def release(self) -> None:
+        self._on_release()
+
+
+def test_sync_all_due_credentials_uses_the_session_state_of_a_sync_that_finished_meanwhile(
+    session_factory: sessionmaker, monkeypatch: pytest.MonkeyPatch
+):
+    user_id = create_user(session_factory).id
+    credential_id = persist_credential(session_factory, user_id=user_id)
+    seen_states: list[dict | None] = []
+    committed_states: list[dict | None] = []
+
+    def store_state_of_concurrent_sync() -> None:
+        with session_factory() as other_session:
+            other_session.get(entity=Credential, ident=credential_id).session_state = {"archive": "concurrent"}
+            other_session.commit()
+
+    def record_committed_state() -> None:
+        committed_states.append(_stored_credential(session_factory, credential_id=credential_id).session_state)
+
+    def rotating_sync(self: Credential, handler: BankHandler) -> None:
+        seen_states.append(handler.session_state)
+        handler.session_state = {"archive": "rotated"}
+
+    monkeypatch.setattr(target=Credential, name="sync", value=rotating_sync)
+    monkeypatch.setattr(
+        target=credential_service,
+        name="_sync_lock",
+        value=lambda credential_id: _LockWithSideEffects(
+            on_acquire=store_state_of_concurrent_sync, on_release=record_committed_state
+        ),
+    )
+
+    with session_factory() as session:
+        credential_service.sync_all_due_credentials(db_session=session)
+
+    assert seen_states == [{"archive": "concurrent"}]
+    assert committed_states == [{"archive": "rotated"}]
+
+
+def test_sync_all_due_credentials_skips_a_credential_that_is_already_syncing(
+    session_factory: sessionmaker, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    user_id = create_user(session_factory).id
+    credential_id = persist_credential(session_factory, user_id=user_id)
+    sync = MagicMock()
+    monkeypatch.setattr(target=Credential, name="sync", value=sync)
+
+    sync_lock = credential_service._sync_lock(credential_id)
+    sync_lock.acquire()
+    try:
+        with session_factory() as session:
+            credential_service.sync_all_due_credentials(db_session=session)
+    finally:
+        sync_lock.release()
+
+    sync.assert_not_called()
+    assert_log_contains(caplog, message="another sync is running")
+    assert_log_contains(caplog, message="0 synced, 1 skipped")
+
+
+# The failed flush leaves state changes on the dead transaction on purpose
+@pytest.mark.filterwarnings("ignore:Session's state has been changed on a non-active transaction")
+def test_sync_all_due_credentials_keeps_the_rotated_session_state_when_writing_the_sync_fails(
+    session_factory: sessionmaker, monkeypatch: pytest.MonkeyPatch
+):
+    user_id = create_user(session_factory).id
+    broken_id = persist_credential(session_factory, user_id=user_id)
+    healthy_id = persist_credential(session_factory, user_id=user_id)
+
+    def sync_failing_on_write(self: Credential, handler: BankHandler) -> None:
+        handler.session_state = {"archive": f"rotated-{self.id}"}
+        if self.id == broken_id:
+            self.user_id = None  # stands in for e.g. "database is locked"
+            object_session(self).flush()
+
+    monkeypatch.setattr(target=Credential, name="sync", value=sync_failing_on_write)
+
+    with session_factory() as session:
+        credential_service.sync_all_due_credentials(db_session=session)
+
+    broken = _stored_credential(session_factory, credential_id=broken_id)
+    assert broken.session_state == {"archive": f"rotated-{broken_id}"}
+    assert broken.user_id == user_id
+    assert broken.last_sync_error is not None
+    healthy = _stored_credential(session_factory, credential_id=healthy_id)
+    assert healthy.session_state == {"archive": f"rotated-{healthy_id}"}
+
+
+def test_sync_all_due_credentials_starts_no_interactive_challenge(
+    session_factory: sessionmaker, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    user_id = create_user(session_factory).id
+    credential_id = persist_credential(
+        session_factory,
+        user_id=user_id,
+        bank=BankProvider.TRADE_REPUBLIC,
+        credentials={"phone": PHONE_NUMBER, "pin": PIN},
+    )
+
+    def raise_reauth(self: Credential, handler: BankHandler) -> None:
+        raise ReauthenticationRequiredError("expired")
+
+    monkeypatch.setattr(target=Credential, name="sync", value=raise_reauth)
+    start_login = MagicMock()
+    monkeypatch.setattr(target=trade_republic_login, name="start", value=start_login)
+
+    with session_factory() as session:
+        credential_service.sync_all_due_credentials(db_session=session)
+
+    start_login.assert_not_called()
+    assert _stored_credential(session_factory, credential_id=credential_id).requires_two_factor_authentication is False
+    assert_log_contains(caplog, message="requires re-authentication; nobody is around to start it")
+
+
+@pytest.mark.parametrize(
+    argnames=("bank", "credentials", "login_module", "login_result", "expected_flag"),
+    argvalues=[
+        (BankProvider.SCALABLE_CAPITAL, {}, scalable_capital_login, {"archive": "fresh"}, False),
+        (BankProvider.TRADE_REPUBLIC, {"phone": PHONE_NUMBER, "pin": PIN}, trade_republic_login, "cookies", True),
+    ],
+)
+def test_confirm_two_factor_enables_unattended_sync_only_where_supported(
+    session_factory: sessionmaker,
+    monkeypatch: pytest.MonkeyPatch,
+    bank: BankProvider,
+    credentials: dict[str, str],
+    login_module: object,
+    login_result: object,
+    expected_flag: bool,
+):
+    user_id = create_user(session_factory).id
+    credential_id = persist_credential(
+        session_factory,
+        user_id=user_id,
+        bank=bank,
+        credentials=credentials,
+        requires_two_factor_authentication=True,
+    )
+    monkeypatch.setattr(target=login_module, name="complete", value=MagicMock(return_value=login_result))
+    monkeypatch.setattr(target=Credential, name="sync", value=MagicMock())
+
+    with session_factory() as session:
+        credential_service.confirm_two_factor(
+            db_session=session, credential_id=credential_id, challenge_token=CHALLENGE_TOKEN, code=TWO_FACTOR_CODE
+        )
+
+    stored = _stored_credential(session_factory, credential_id=credential_id)
+    assert stored.requires_two_factor_authentication is expected_flag
+
+
+def test_confirm_two_factor_keeps_the_new_login_when_the_first_sync_fails(
+    session_factory: sessionmaker, monkeypatch: pytest.MonkeyPatch
+):
+    user_id = create_user(session_factory).id
+    credential_id = persist_credential(
+        session_factory, user_id=user_id, bank=BankProvider.SCALABLE_CAPITAL, credentials={}
+    )
+    monkeypatch.setattr(
+        target=scalable_capital_login, name="complete", value=MagicMock(return_value={"archive": "fresh"})
+    )
+    monkeypatch.setattr(target=Credential, name="sync", value=MagicMock(side_effect=RuntimeError("rate-limited")))
+
+    with session_factory() as session:
+        with pytest.raises(RuntimeError, match="rate-limited"):
+            credential_service.confirm_two_factor(
+                db_session=session, credential_id=credential_id, challenge_token=CHALLENGE_TOKEN, code=TWO_FACTOR_CODE
+            )
+
+    assert _stored_credential(session_factory, credential_id=credential_id).session_state == {"archive": "fresh"}
+
+
 def test_create_generic_fints_credential_persists_blz(session_factory: sessionmaker, caplog: pytest.LogCaptureFixture):
     user_id = create_user(session_factory).id
 
@@ -648,7 +861,7 @@ def test_sync_all_due_credentials_logs_exception_per_failure(
     user_id = create_user(session_factory).id
     failing = persist_credential(session_factory, user_id=user_id)
 
-    def fake_sync(credential: Credential):
+    def fake_sync(credential: Credential, **_: object):
         raise RuntimeError(f"something went wrong when syncing {credential}")
 
     monkeypatch.setattr(
