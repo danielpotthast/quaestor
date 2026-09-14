@@ -164,7 +164,14 @@
       "3y": "3 J"
     },
     "lastUpdated": "Zuletzt aktualisiert",
-    "lastUsed": "Zuletzt verwendet"
+    "lastUsed": "Zuletzt verwendet",
+    "add": "Hinzufügen",
+    "addTransaction": "Transaktion hinzufügen",
+    "relatedTransactions": "Verknüpfte Transaktionen",
+    "perDay": "Pro Tag",
+    "perMonth": "Pro Monat",
+    "weekly": "Wöchentlich",
+    "syncFailed": "Synchronisierung fehlgeschlagen"
   },
   "errors": {
     "serverOffline": {
@@ -186,7 +193,6 @@
     },
     "syncing": "Wird synchronisiert",
     "synced": "Synchronisiert",
-    "syncFailed": "Synchronisierung fehlgeschlagen",
     "syncProgress": "{{done}} von {{total}} Banken synchronisiert",
     "privacy": {
       "hide": "Beträge ausblenden",
@@ -242,7 +248,7 @@
     "sortAmountAsc": "Betrag aufsteigend",
     "sortAmountAbsDesc": "Betragshöhe absteigend",
     "sortAmountAbsAsc": "Betragshöhe aufsteigend",
-    "linkModeHint": "Wähle die Transaktion aus, mit der verlinkt werden soll."
+    "linkModeHint": "Wähle die Transaktion aus, mit der verknüpft werden soll."
   },
   "login": {
     "loginTab": "Anmelden",
@@ -347,7 +353,6 @@
   "expectedTransactions": {
     "title": "Erwartete Transaktionen",
     "add": "Erwartete Transaktion",
-    "addShort": "Hinzufügen",
     "fieldTolerance": "Toleranz",
     "toleranceHint": "Wie genau der gebuchte Betrag dem erwarteten entsprechen muss, damit er automatisch erkannt wird.",
     "toleranceExact": "Exakt",
@@ -410,7 +415,6 @@
     "syncErrorPending_other": "{{count}} Bankverbindungen benötigen Aufmerksamkeit",
     "syncError": {
       "title": "Automatische Synchronisierung fehlgeschlagen",
-      "rowHint": "$t(overview.syncFailed)",
       "reason": {
         "invalid_credentials": "Die Bank hat die Anmeldung abgelehnt. Bitte prüfe deine Zugangsdaten und verbinde die Bank neu.",
         "unsupported_bank": "Diese Bank wird derzeit nicht unterstützt.",
@@ -481,7 +485,6 @@
       "deleteFailed": "Verbindung konnte nicht gelöscht werden. Bitte erneut versuchen."
     },
     "manualTransactions": {
-      "add": "Transaktion hinzufügen",
       "deleted": "Transaktion gelöscht",
       "deleteFailed": "Transaktion konnte nicht gelöscht werden.",
       "created": "Transaktion angelegt",
@@ -616,17 +619,17 @@
     "refundBadge": "Erstattung",
     "pendingHint": "Vorgemerkt — noch nicht endgültig gebucht und kann sich noch ändern",
     "notFound": "Die Transaktion, die du suchst, dies nicht sie ist.",
-    "related": "Verknüpfte Transaktionen",
     "incoming": "Eingehend",
     "outgoing": "Ausgehend",
     "removeFromRelated": "Verknüpfung entfernen",
     "unlinkFailed": "Verbindung konnte nicht gelöst werden",
     "categoryUpdateFailed": "Kategorie konnte nicht gespeichert werden",
     "linkedAccountUnknown": "Anderes Konto",
-    "linkStart": "Transaktion verlinken",
+    "linkStart": "Transaktion verknüpfen",
+    "removeFromRelatedShort": "Entfernen",
     "linkConfirmPrompt": "Diese Transaktion mit {{partner}} · {{amount}} · {{date}} verknüpfen?",
-    "linkSuccess": "Transaktionen verlinkt",
-    "linkFailed": "Verlinken fehlgeschlagen"
+    "linkSuccess": "Transaktionen verknüpft",
+    "linkFailed": "Verknüpfen fehlgeschlagen"
   },
   "attachments": {
     "label": "Anhänge",
@@ -639,7 +642,6 @@
     "rejectedSizeGeneric": "Datei zu groß"
   },
   "filters": {
-    "relatedLabel": "$t(transaction.related)",
     "related": {
       "linked": "Mit Verknüpfung",
       "unlinked": "Ohne Verknüpfung"
@@ -687,8 +689,6 @@
       "new": "neu"
     },
     "contracts": {
-      "perDay": "Pro Tag",
-      "perMonth": "Pro Monat",
       "perYear": "Pro Jahr",
       "sum": "Summe",
       "viewAll": "Alle ansehen"
@@ -706,9 +706,9 @@
       },
       "weekLabel": "KW {{week}}",
       "group": {
-        "day": "$t(stats.contracts.perDay)",
+        "day": "$t(common.perDay)",
         "week": "Pro Woche",
-        "month": "$t(stats.contracts.perMonth)",
+        "month": "$t(common.perMonth)",
         "weekday": "Pro Wochentag"
       }
     },
@@ -840,7 +840,7 @@
     "daysUnit": "in Tagen",
     "windowLabel": "Zeitfenster",
     "period": {
-      "weekly": "$t(contracts.frequency.WEEKLY)",
+      "weekly": "$t(common.weekly)",
       "monthly": "Monatlich (Am 01.)"
     }
   },
@@ -887,7 +887,7 @@
     "removed": "Vom Vertrag entfernt",
     "createToAssign": "Auf diesem Konto gibt es keine Verträge – lege zuerst einen an.",
     "frequency": {
-      "WEEKLY": "Wöchentlich",
+      "WEEKLY": "$t(common.weekly)",
       "BIWEEKLY": "Zweiwöchentlich",
       "MONTHLY": "Monatlich",
       "QUARTERLY": "Vierteljährlich",

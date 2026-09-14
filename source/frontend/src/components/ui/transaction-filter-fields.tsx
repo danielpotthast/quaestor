@@ -60,10 +60,10 @@ export function TransactionFilterFields({
       </div>
       {onRelatedChange ? (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={relatedId}>{t('filters.relatedLabel')}</Label>
+          <Label htmlFor={relatedId}>{t('common.relatedTransactions')}</Label>
           <ScalarMultiSelect
             id={relatedId}
-            ariaLabel={t('filters.relatedLabel')}
+            ariaLabel={t('common.relatedTransactions')}
             options={[
               {
                 value: 'linked',

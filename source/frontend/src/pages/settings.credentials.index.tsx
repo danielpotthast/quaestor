@@ -97,9 +97,7 @@ function CredentialRow({ credential }: { credential: CredentialRead }) {
         <span className="flex flex-1 flex-col">
           <span className="text-sm font-medium">{title}</span>
           {hasSyncError(credential) ? (
-            <span className="text-destructive text-xs font-medium">
-              {t('credentials.syncError.rowHint')}
-            </span>
+            <span className="text-destructive text-xs font-medium">{t('common.syncFailed')}</span>
           ) : syncedLabel ? (
             <span className="text-muted-foreground text-xs">{syncedLabel}</span>
           ) : null}

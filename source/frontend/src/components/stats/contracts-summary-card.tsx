@@ -24,8 +24,8 @@ export function ContractsSummaryCard({
   )
 
   const periods: { key: ContractCostPeriod; label: string; hideOnMobile?: boolean }[] = [
-    { key: 'DAY', label: t('stats.contracts.perDay') },
-    { key: 'MONTHLY', label: t('stats.contracts.perMonth') },
+    { key: 'DAY', label: t('common.perDay') },
+    { key: 'MONTHLY', label: t('common.perMonth') },
     { key: 'YEARLY', label: t('stats.contracts.perYear'), hideOnMobile: true },
   ]
   const expenses = contracts.filter((c) => (c.amount_per_day ?? 0) < 0)

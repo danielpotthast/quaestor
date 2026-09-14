@@ -876,7 +876,7 @@ function ruleSummaryLines(
       label: t('common.period'),
       value:
         rule.period === 'weekly'
-          ? `${t('notifications.period.weekly')} (${t(`common.weekdays.${rule.weekday}`)})`
+          ? `${t('common.weekly')} (${t(`common.weekdays.${rule.weekday}`)})`
           : t(`notifications.period.${rule.period}`),
     })
   } else if ('days' in rule && rule.days !== null) {

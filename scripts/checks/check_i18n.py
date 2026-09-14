@@ -24,6 +24,8 @@ I18NKEY_RE = re.compile(r"""i18nKey\s*=\s*['"]([a-zA-Z0-9_.]+)['"]""")
 ANY_STRING_RE = re.compile(r"""['"`]([a-zA-Z][a-zA-Z0-9_.]*)['"`]""")
 
 KEY_LIKE_RE = re.compile(r"^[a-z0-9_]+(?:\.[a-z0-9_]+)+$")
+NESTED_REFERENCE_RE = re.compile(r"\$t\(([^),]+)")
+COMMON_ALIAS_RE = re.compile(r"^\$t\(common\.[^)]+\)$")
 BACKEND_CATALOG_FILENAME = "notification_messages.py"
 
 
@@ -132,6 +134,8 @@ def report_duplicate_values(errors: list[str], messages_by_language: dict[str, d
     keys_by_values: dict[tuple[str, ...], list[str]] = {}
     for key in shared_keys:
         values = tuple(messages_by_language[language][key] for language in languages)
+        if all(COMMON_ALIAS_RE.match(value) for value in values):
+            continue
         keys_by_values.setdefault(values, []).append(key)  # noqa FKA100
     for values, keys in sorted(keys_by_values.items()):
         if len(keys) > 1:
@@ -139,6 +143,14 @@ def report_duplicate_values(errors: list[str], messages_by_language: dict[str, d
                 f"[frontend] duplicate translation {values[0]!r} under {', '.join(sorted(keys))}"
                 " --> keep one in common.*"
             )
+
+
+def report_references_outside_common(errors: list[str], messages_by_language: dict[str, dict[str, str]]) -> None:
+    for language, messages in sorted(messages_by_language.items()):
+        for key, value in sorted(messages.items()):
+            for target in NESTED_REFERENCE_RE.findall(value):
+                if not target.startswith("common."):
+                    errors.append(f"[frontend:{language}] {key} references {target} --> move shared text to common.*")
 
 
 def check_frontend_messages(errors: list[str]) -> None:
@@ -151,6 +163,7 @@ def check_frontend_messages(errors: list[str]) -> None:
     report_languages_must_match_supported(errors, languages=set(keys_by_language), label="frontend")
     report_keys_missing_in_some_language(errors, keys_by_language, label="frontend")
     report_duplicate_values(errors, messages_by_language=messages_by_language)
+    report_references_outside_common(errors, messages_by_language=messages_by_language)
 
     for language, keys in keys_by_language.items():
         for literal in sorted(literals):

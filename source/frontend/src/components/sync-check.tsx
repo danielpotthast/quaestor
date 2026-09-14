@@ -93,7 +93,7 @@ export function SyncStatusIcon({ state }: { state: SyncState }) {
     return (
       <TriangleAlert
         className="text-warning size-4 shrink-0"
-        aria-label={t('overview.syncFailed')}
+        aria-label={t('common.syncFailed')}
         role="status"
       />
     )

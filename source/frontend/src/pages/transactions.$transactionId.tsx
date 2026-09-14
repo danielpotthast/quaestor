@@ -10,6 +10,7 @@ import {
   formatDate,
   formatDateCompact,
   formatDateShortWeekdayWithoutYear,
+  formatDateWithoutYear,
   formatMoney,
   formatIban,
   isIban,
@@ -18,8 +19,8 @@ import { CategoryAvatar, useCategoryOptions } from '@/lib/categoryIcons'
 import { type TransactionCategory } from '@/lib/transaction'
 import { NoteEditor } from '@/components/note-editor'
 import { AccountLabel } from '@/components/AccountLabel'
-import { RowActions } from '@/components/row-actions'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { SingleSelectPopover } from '@/components/ui/single-select-popover'
 import { cn } from '@/lib/utils'
 import type {
@@ -187,18 +188,16 @@ function RelatedSection({
 }) {
   const { t } = useTranslation()
 
+  const showUnlink = canUnlink && members.length > 0
   const showAmount = new Set(members.map((member) => Math.abs(member.transaction.amount))).size > 1
 
   const dedupe = (values: string[]) => Array.from(new Set(values))
-  const relatedDatesCompact = dedupe(
-    members.map((member) => formatDateCompact(member.transaction.date)),
-  )
   const relatedDates = dedupe(
     members.map((member) => formatDateShortWeekdayWithoutYear(member.transaction.date)),
   )
 
   return (
-    <DetailRow label={t('transaction.related')} align="start">
+    <DetailRow label={t('common.relatedTransactions')} align="start">
       <div className="flex w-full flex-col gap-3">
         {members.length > 0 ? (
           <ol className="flex flex-col">
@@ -210,15 +209,130 @@ function RelatedSection({
                 isLast={index === members.length - 1}
                 showAmount={showAmount}
                 relatedDates={relatedDates}
-                relatedDatesCompact={relatedDatesCompact}
-                onRemove={canUnlink ? () => onUnlink(member.transaction) : undefined}
               />
             ))}
           </ol>
         ) : null}
-        {linkAction ? <div className={cn(members.length > 0 && 'ml-6')}>{linkAction}</div> : null}
+        {linkAction || showUnlink ? (
+          <div
+            className={cn(
+              'grid auto-cols-fr grid-flow-col gap-2 sm:flex sm:flex-wrap',
+              members.length > 0 && 'sm:ml-6',
+            )}
+          >
+            {linkAction}
+            {showUnlink ? <UnlinkMenu members={members} onUnlink={onUnlink} /> : null}
+          </div>
+        ) : null}
       </div>
     </DetailRow>
+  )
+}
+
+function partnerLabelOf(member: RelatedTransactionView, unknownLabel: string): string {
+  return (
+    member.accountName?.trim() ||
+    transferPartnerLabel(member.transaction.other_party, null) ||
+    unknownLabel
+  )
+}
+
+function UnlinkMenu({
+  members,
+  onUnlink,
+}: {
+  members: RelatedTransactionView[]
+  onUnlink: (transaction: TransactionRead) => Promise<unknown>
+}) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const [confirmingId, setConfirmingId] = useState<number | null>(null)
+  const [pending, setPending] = useState(false)
+
+  const remove = async (transaction: TransactionRead) => {
+    setPending(true)
+    try {
+      await onUnlink(transaction)
+      setOpen(false)
+    } catch {
+      toast.error(t('transaction.unlinkFailed'))
+    } finally {
+      setPending(false)
+      setConfirmingId(null)
+    }
+  }
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) setConfirmingId(null)
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label={t('transaction.removeFromRelated')}
+        >
+          <Unlink className="size-4" aria-hidden="true" />
+          <span className="sm:hidden">{t('transaction.removeFromRelatedShort')}</span>
+          <span className="hidden sm:inline">{t('transaction.removeFromRelated')}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-80 max-w-[calc(100vw-1rem)] p-1">
+        <ul aria-label={t('transaction.removeFromRelated')} className="flex flex-col">
+          {members.map((member) => (
+            <li key={member.transaction.id} className="flex flex-col gap-2 p-1">
+              <button
+                type="button"
+                aria-expanded={confirmingId === member.transaction.id}
+                onClick={() =>
+                  setConfirmingId((current) =>
+                    current === member.transaction.id ? null : member.transaction.id,
+                  )
+                }
+                className="hover:bg-muted/60 focus-visible:bg-muted/60 flex w-full cursor-pointer items-center rounded-md px-2 py-1.5 text-left outline-none"
+              >
+                <span className="min-w-0 text-sm">
+                  <span className="block truncate">
+                    {partnerLabelOf(member, t('transaction.linkedAccountUnknown'))}
+                  </span>
+                  <span className="text-muted-foreground text-xs tabular-nums">
+                    {formatDateCompact(member.transaction.date)} ·{' '}
+                    {formatMoney(member.transaction.amount)}
+                  </span>
+                </span>
+              </button>
+              {confirmingId === member.transaction.id ? (
+                <div className="grid grid-cols-2 gap-2 px-1 pb-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    disabled={pending}
+                    onClick={() => void remove(member.transaction)}
+                  >
+                    {t('transaction.removeFromRelatedShort')}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={pending}
+                    onClick={() => setConfirmingId(null)}
+                  >
+                    {t('common.cancel')}
+                  </Button>
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -228,58 +342,20 @@ function RelatedTimelineRow({
   isLast,
   showAmount,
   relatedDates,
-  relatedDatesCompact,
-  onRemove,
 }: {
   member: RelatedTransactionView
   isFirst: boolean
   isLast: boolean
   showAmount: boolean
   relatedDates: string[]
-  relatedDatesCompact: string[]
-  onRemove?: () => Promise<unknown>
 }) {
   const { t } = useTranslation()
-  const [pending, setPending] = useState(false)
-  const { transaction, accountName, bankName, bankIcon, isCurrent, isAccessible } = member
+  const { transaction, bankName, bankIcon, isCurrent, isAccessible } = member
   const linkable = !isCurrent && isAccessible
   const incoming = transaction.amount > 0
   const DirectionIcon = incoming ? ArrowDownLeft : ArrowUpRight
 
-  const handleRemove = async () => {
-    setPending(true)
-    try {
-      await onRemove?.()
-    } catch {
-      toast.error(t('transaction.unlinkFailed'))
-    } finally {
-      setPending(false)
-    }
-  }
-
-  const removeButton = onRemove ? (
-    <RowActions
-      onDelete={handleRemove}
-      deleting={pending}
-      confirmLabel={t('transaction.removeFromRelated')}
-      renderTrigger={(confirm) => (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="text-muted-foreground hover:text-destructive shrink-0"
-          onClick={confirm}
-          aria-label={t('transaction.removeFromRelated')}
-        >
-          <Unlink className="size-4" aria-hidden="true" />
-        </Button>
-      )}
-    />
-  ) : null
-  const partnerLabel =
-    accountName?.trim() ||
-    transferPartnerLabel(transaction.other_party, null) ||
-    t('transaction.linkedAccountUnknown')
+  const partnerLabel = partnerLabelOf(member, t('transaction.linkedAccountUnknown'))
 
   const otherParty = transaction.other_party?.trim()
   const purpose = transaction.purpose?.trim()
@@ -338,17 +414,10 @@ function RelatedTimelineRow({
           {timeline}
         </Link>
       )}
-      <div className="flex min-w-0 flex-1 items-center gap-2 py-1.5">
-        <div className="flex shrink-0 flex-col items-center gap-0.5 sm:flex-row sm:gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-1.5 sm:flex-row sm:items-center sm:gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <span className="text-muted-foreground whitespace-nowrap text-xs tabular-nums">
-            <span className="inline-grid sm:hidden">
-              {relatedDatesCompact.map((date) => (
-                <span key={date} aria-hidden="true" className="invisible col-start-1 row-start-1">
-                  {date}
-                </span>
-              ))}
-              <span className="col-start-1 row-start-1">{formatDateCompact(transaction.date)}</span>
-            </span>
+            <span className="sm:hidden">{formatDateWithoutYear(transaction.date)}</span>
             <span className="hidden sm:inline-grid">
               {relatedDates.map((date) => (
                 <span key={date} aria-hidden="true" className="invisible col-start-1 row-start-1">
@@ -361,7 +430,10 @@ function RelatedTimelineRow({
             </span>
           </span>
           <DirectionIcon
-            className={cn('size-4 shrink-0', incoming ? 'text-success' : 'text-destructive')}
+            className={cn(
+              'hidden size-4 shrink-0 sm:block',
+              incoming ? 'text-success' : 'text-destructive',
+            )}
             aria-label={t(incoming ? 'transaction.incoming' : 'transaction.outgoing')}
           />
         </div>
@@ -391,7 +463,6 @@ function RelatedTimelineRow({
             </span>
           ) : null}
         </div>
-        {removeButton ? <span className="ml-auto shrink-0">{removeButton}</span> : null}
       </div>
     </li>
   )

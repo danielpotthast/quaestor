@@ -164,7 +164,14 @@
       "3y": "3Y"
     },
     "lastUpdated": "Last updated",
-    "lastUsed": "Last used"
+    "lastUsed": "Last used",
+    "add": "Add",
+    "addTransaction": "Add transaction",
+    "relatedTransactions": "Related transactions",
+    "perDay": "Per day",
+    "perMonth": "Per month",
+    "weekly": "Weekly",
+    "syncFailed": "Sync failed"
   },
   "errors": {
     "serverOffline": {
@@ -186,7 +193,6 @@
     },
     "syncing": "Syncing",
     "synced": "Synced",
-    "syncFailed": "Sync failed",
     "syncProgress": "{{done}} of {{total}} banks synced",
     "privacy": {
       "hide": "Hide amounts",
@@ -347,7 +353,6 @@
   "expectedTransactions": {
     "title": "Expected transactions",
     "add": "Expected transaction",
-    "addShort": "Add",
     "fieldTolerance": "Tolerance",
     "toleranceHint": "How closely the booked amount must match the expected amount to be detected automatically.",
     "toleranceExact": "Exact",
@@ -410,7 +415,6 @@
     "syncErrorPending_other": "{{count}} bank connections need attention",
     "syncError": {
       "title": "Automatic sync failed",
-      "rowHint": "$t(overview.syncFailed)",
       "reason": {
         "invalid_credentials": "The bank rejected the login. Please check your credentials and reconnect the bank.",
         "unsupported_bank": "This bank is currently not supported.",
@@ -481,7 +485,6 @@
       "deleteFailed": "Could not delete the connection. Please try again."
     },
     "manualTransactions": {
-      "add": "Add transaction",
       "deleted": "Transaction deleted",
       "deleteFailed": "Could not delete transaction.",
       "created": "Transaction created",
@@ -616,7 +619,6 @@
     "refundBadge": "Refund",
     "pendingHint": "Pending — not finally booked yet and may still change",
     "notFound": "The transaction you seek, this is not.",
-    "related": "Related transactions",
     "incoming": "Incoming",
     "outgoing": "Outgoing",
     "removeFromRelated": "Remove link",
@@ -624,6 +626,7 @@
     "categoryUpdateFailed": "Could not update the category",
     "linkedAccountUnknown": "Other account",
     "linkStart": "Link transaction",
+    "removeFromRelatedShort": "Remove",
     "linkConfirmPrompt": "Link this transaction with {{partner}} · {{amount}} · {{date}}?",
     "linkSuccess": "Transactions linked",
     "linkFailed": "Could not link the transactions"
@@ -639,7 +642,6 @@
     "rejectedSizeGeneric": "File too large"
   },
   "filters": {
-    "relatedLabel": "$t(transaction.related)",
     "attachmentLabel": "Attachment",
     "attachment": {
       "with": "With attachment",
@@ -687,8 +689,6 @@
       "new": "new"
     },
     "contracts": {
-      "perDay": "Per day",
-      "perMonth": "Per month",
       "perYear": "Per year",
       "sum": "Sum",
       "viewAll": "View all"
@@ -706,9 +706,9 @@
       },
       "weekLabel": "Week {{week}}",
       "group": {
-        "day": "$t(stats.contracts.perDay)",
+        "day": "$t(common.perDay)",
         "week": "Per week",
-        "month": "$t(stats.contracts.perMonth)",
+        "month": "$t(common.perMonth)",
         "weekday": "Per weekday"
       }
     },
@@ -840,7 +840,7 @@
     "daysUnit": "in days",
     "windowLabel": "Time window",
     "period": {
-      "weekly": "$t(contracts.frequency.WEEKLY)",
+      "weekly": "$t(common.weekly)",
       "monthly": "Monthly (on the 1st)"
     }
   },
@@ -887,7 +887,7 @@
     "removed": "Removed from contract",
     "createToAssign": "No contracts on this account — create one first.",
     "frequency": {
-      "WEEKLY": "Weekly",
+      "WEEKLY": "$t(common.weekly)",
       "BIWEEKLY": "Biweekly",
       "MONTHLY": "Monthly",
       "QUARTERLY": "Quarterly",

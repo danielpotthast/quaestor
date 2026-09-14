@@ -400,7 +400,7 @@ export function AccountDetailView({
               onClick={() => setAddingTxn((prev) => !prev)}
             >
               <Plus className="size-3.5" aria-hidden="true" />
-              {t('credentials.manualTransactions.add')}
+              {t('common.addTransaction')}
             </Button>
           </div>
         ) : !isManual && canWrite ? (
@@ -897,7 +897,7 @@ function ExpectedTransactionsList({ accountId, onAdd }: { accountId: number; onA
         </h2>
         <Button type="button" size="sm" variant="outline" onClick={onAdd}>
           <Plus className="size-3.5" aria-hidden="true" />
-          {t('expectedTransactions.addShort')}
+          {t('common.add')}
         </Button>
       </div>
       <Collapsible.Content className="collapsible-content overflow-hidden">

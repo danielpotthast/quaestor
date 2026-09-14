@@ -158,9 +158,11 @@ function LinkStartSection({
       <Link
         to="/search"
         search={{ link_account_id: accountId, link_transaction_id: transactionId }}
+        aria-label={t('common.addTransaction')}
       >
         <ArrowLeftRight className="size-4" aria-hidden="true" />
-        {t('transaction.linkStart')}
+        <span className="sm:hidden">{t('common.add')}</span>
+        <span className="hidden sm:inline">{t('common.addTransaction')}</span>
       </Link>
     </Button>
   )
