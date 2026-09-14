@@ -7,7 +7,7 @@ from source.backend.bank_handlers import BankProvider
 from source.backend.models.accounts.account import Account
 from source.backend.models.accounts.account_balance_snapshot import AccountBalanceSnapshot, BalanceSnapshotSource
 from source.backend.models.auth.user import User
-from source.backend.models.transactions.flow_link_source import FlowLinkSource
+from source.backend.models.transactions.related_link_source import RelatedLinkSource
 from source.backend.models.transactions.transaction import Transaction
 from source.backend.models.transactions.transaction_category import TransactionCategory
 from source.backend.models.transactions.transaction_type import TransactionType
@@ -23,7 +23,7 @@ from tests.backend.conftest import (
     SECOND_AMOUNT,
     UNKNOWN_TRANSACTION_OTHER_PARTY,
     assert_log_contains,
-    link_transactions_as_flow,
+    link_transactions_as_related_group,
     make_account,
     make_credential,
     make_transaction,
@@ -32,10 +32,10 @@ from tests.backend.conftest import (
 
 
 def _assert_linked(transactions: list[Transaction]) -> None:
-    flow_ids = {transaction.flow_id for transaction in transactions}
-    assert None not in flow_ids, "every transaction should belong to a flow"
-    assert len(flow_ids) == 1, "all transactions should share the same flow"
-    assert all(t.flow_link_source == FlowLinkSource.DETECTED for t in transactions), "auto-links are DETECTED"
+    related_group_ids = {transaction.related_group_id for transaction in transactions}
+    assert None not in related_group_ids, "every transaction should belong to a related group"
+    assert len(related_group_ids) == 1, "all transactions should share the same related group"
+    assert all(t.related_link_source == RelatedLinkSource.DETECTED for t in transactions), "auto-links are DETECTED"
 
 
 def _create_two_accounts(session: Session, user_id: int) -> tuple[Account, Account]:
@@ -187,7 +187,7 @@ def test_prefers_a_different_account_over_the_same_account(session_factory: sess
 
         assert transfer_detection.detect_transfers_for_user(db_session=session, user=user) == 1
         _assert_linked([out_transaction, other_account])
-        assert same_account.flow_id is None
+        assert same_account.related_group_id is None
 
 
 def test_does_not_match_across_different_users(session_factory: sessionmaker):
@@ -300,10 +300,10 @@ def test_pairs_one_to_one_when_multiple_inflows_match(session_factory: sessionma
         unpaired = [t for t in (first, second) if t.transaction_type == TransactionType.INCOMING]
         assert len(paired) == 1
         assert len(unpaired) == 1
-        assert unpaired[0].flow_id is None
+        assert unpaired[0].related_group_id is None
 
 
-def test_deleting_one_leg_dissolves_a_two_member_flow(session_factory: sessionmaker):
+def test_deleting_one_leg_dissolves_a_two_member_related_group(session_factory: sessionmaker):
     with session_factory() as session:
         user = make_user(session)
         account_a, account_b = _create_two_accounts(session, user_id=user.id)
@@ -329,11 +329,11 @@ def test_deleting_one_leg_dissolves_a_two_member_flow(session_factory: sessionma
         session.flush()
 
         session.refresh(in_transaction)
-        assert in_transaction.flow_id is None
+        assert in_transaction.related_group_id is None
         assert in_transaction.transaction_type == TransactionType.INCOMING
 
 
-def test_deleting_a_flow_restores_member_types(session_factory: sessionmaker):
+def test_deleting_a_related_group_restores_member_types(session_factory: sessionmaker):
     with session_factory() as session:
         user = make_user(session)
         account_a, account_b = _create_two_accounts(session, user_id=user.id)
@@ -345,16 +345,18 @@ def test_deleting_a_flow_restores_member_types(session_factory: sessionmaker):
         )
         out_transaction.transfer_original_type = TransactionType.REMOVAL
         in_transaction.transfer_original_type = TransactionType.INCOMING
-        flow = link_transactions_as_flow(db_session=session, transactions=[out_transaction, in_transaction])
+        related_group = link_transactions_as_related_group(
+            db_session=session, transactions=[out_transaction, in_transaction]
+        )
         session.flush()
 
-        session.delete(flow)
+        session.delete(related_group)
         session.flush()
 
         for transaction in (out_transaction, in_transaction):
             session.refresh(transaction)
-            assert transaction.flow_id is None
-            assert transaction.flow_link_source is None
+            assert transaction.related_group_id is None
+            assert transaction.related_link_source is None
             assert transaction.transfer_original_type is None
         assert out_transaction.transaction_type == TransactionType.REMOVAL
         assert in_transaction.transaction_type == TransactionType.INCOMING
@@ -443,7 +445,7 @@ def test_never_pairs_relink_blocked_transactions(session_factory: sessionmaker):
         session.flush()
 
         assert transfer_detection.detect_transfers_for_user(db_session=session, user=user) == 0
-        assert blocked.flow_id is None
+        assert blocked.related_group_id is None
 
 
 def test_deleting_a_user_with_a_linked_transfer_pair_does_not_deadlock(session_factory: sessionmaker):
@@ -552,7 +554,7 @@ def test_mirror_matching_prefers_the_funding_leg_naming_the_same_merchant(sessio
 
         assert transfer_detection.detect_transfers_for_user(db_session=session, user=user) == 1
         _assert_linked([mirror, matching_purchase])
-        assert other_purchase.flow_id is None
+        assert other_purchase.related_group_id is None
         assert other_purchase.transaction_type == TransactionType.OUTGOING
 
 
@@ -579,8 +581,8 @@ def test_never_links_mirror_bookings_without_an_intermediary_counterparty(sessio
         session.flush()
 
         assert transfer_detection.detect_transfers_for_user(db_session=session, user=user) == 0
-        assert unrelated.flow_id is None
-        assert mirror.flow_id is None
+        assert unrelated.related_group_id is None
+        assert mirror.related_group_id is None
 
 
 def test_opposite_signed_intermediary_pairs_stay_regular_transfers(session_factory: sessionmaker):
@@ -609,24 +611,24 @@ def test_opposite_signed_intermediary_pairs_stay_regular_transfers(session_facto
         assert deposit.transaction_type == TransactionType.TRANSFER_IN
 
 
-def _existing_flow_leaving(session: Session, account: Account, amount: float) -> None:
-    # A two-member DETECTED flow whose open end is a `-amount` outflow leaving `account`.
+def _existing_related_group_leaving(session: Session, account: Account, amount: float) -> None:
+    # A two-member DETECTED related group whose open end is a `-amount` outflow leaving `account`.
     incoming = make_transaction(
         session, account_id=account.id, amount=amount, date=RECENT_DATE, transaction_type=TransactionType.TRANSFER_IN
     )
     outgoing = make_transaction(
         session, account_id=account.id, amount=-amount, date=RECENT_DATE, transaction_type=TransactionType.TRANSFER_OUT
     )
-    link_transactions_as_flow(db_session=session, transactions=[incoming, outgoing])
+    link_transactions_as_related_group(db_session=session, transactions=[incoming, outgoing])
 
 
-def test_chains_a_new_leg_onto_an_existing_flows_open_end(
+def test_chains_a_new_leg_onto_an_existing_related_groups_open_end(
     session_factory: sessionmaker, caplog: pytest.LogCaptureFixture
 ):
     with session_factory() as session:
         user = make_user(session)
         account_a, account_b = _create_two_accounts(session, user_id=user.id)
-        _existing_flow_leaving(session, account=account_a, amount=DEFAULT_AMOUNT)
+        _existing_related_group_leaving(session, account=account_a, amount=DEFAULT_AMOUNT)
         arrival = make_transaction(
             session,
             account_id=account_b.id,
@@ -638,21 +640,21 @@ def test_chains_a_new_leg_onto_an_existing_flows_open_end(
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert_log_contains(caplog, message="chained into existing flows")
-        assert arrival.flow_id is not None
+        assert_log_contains(caplog, message="chained into existing related groups")
+        assert arrival.related_group_id is not None
         assert arrival.transaction_type == TransactionType.TRANSFER_IN
         assert arrival.transfer_original_type == TransactionType.INCOMING
-        assert arrival.flow_link_source == FlowLinkSource.DETECTED
+        assert arrival.related_link_source == RelatedLinkSource.DETECTED
 
 
-def test_does_not_chain_when_two_flows_are_in_reach(session_factory: sessionmaker):
+def test_does_not_chain_when_two_related_groups_are_in_reach(session_factory: sessionmaker):
     with session_factory() as session:
         user = make_user(session)
         account_a, account_b = _create_two_accounts(session, user_id=user.id)
         credential_c = make_credential(session, user_id=user.id, bank=BankProvider.FINTS)
         account_c = make_account(session, credential_id=credential_c.id, name="Third IBAN")
-        _existing_flow_leaving(session, account=account_a, amount=DEFAULT_AMOUNT)
-        _existing_flow_leaving(session, account=account_c, amount=DEFAULT_AMOUNT)
+        _existing_related_group_leaving(session, account=account_a, amount=DEFAULT_AMOUNT)
+        _existing_related_group_leaving(session, account=account_c, amount=DEFAULT_AMOUNT)
         arrival = make_transaction(
             session,
             account_id=account_b.id,
@@ -664,10 +666,10 @@ def test_does_not_chain_when_two_flows_are_in_reach(session_factory: sessionmake
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert arrival.flow_id is None
+        assert arrival.related_group_id is None
 
 
-def test_never_chains_onto_a_manual_flow(session_factory: sessionmaker):
+def test_never_chains_onto_a_manual_related_group(session_factory: sessionmaker):
     with session_factory() as session:
         user = make_user(session)
         account_a, account_b = _create_two_accounts(session, user_id=user.id)
@@ -685,9 +687,9 @@ def test_never_chains_onto_a_manual_flow(session_factory: sessionmaker):
             date=RECENT_DATE,
             transaction_type=TransactionType.TRANSFER_OUT,
         )
-        link_transactions_as_flow(db_session=session, transactions=[incoming, outgoing])
-        incoming.flow_link_source = FlowLinkSource.MANUAL
-        outgoing.flow_link_source = FlowLinkSource.MANUAL
+        link_transactions_as_related_group(db_session=session, transactions=[incoming, outgoing])
+        incoming.related_link_source = RelatedLinkSource.MANUAL
+        outgoing.related_link_source = RelatedLinkSource.MANUAL
         arrival = make_transaction(
             session,
             account_id=account_b.id,
@@ -699,14 +701,14 @@ def test_never_chains_onto_a_manual_flow(session_factory: sessionmaker):
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert arrival.flow_id is None
+        assert arrival.related_group_id is None
 
 
 def test_does_not_chain_a_same_account_leg(session_factory: sessionmaker):
     with session_factory() as session:
         user = make_user(session)
         account_a, _ = _create_two_accounts(session, user_id=user.id)
-        _existing_flow_leaving(session, account=account_a, amount=DEFAULT_AMOUNT)
+        _existing_related_group_leaving(session, account=account_a, amount=DEFAULT_AMOUNT)
         refund = make_transaction(
             session,
             account_id=account_a.id,
@@ -718,7 +720,7 @@ def test_does_not_chain_a_same_account_leg(session_factory: sessionmaker):
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert refund.flow_id is None
+        assert refund.related_group_id is None
 
 
 def test_links_a_partial_refund_to_its_payment_by_counterparty(session_factory: sessionmaker):
@@ -785,7 +787,7 @@ def test_does_not_link_a_refund_when_two_payments_to_the_same_party_are_open(ses
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert refund.flow_id is None
+        assert refund.related_group_id is None
 
 
 def test_does_not_link_a_refund_older_than_the_window(session_factory: sessionmaker):
@@ -813,7 +815,7 @@ def test_does_not_link_a_refund_older_than_the_window(session_factory: sessionma
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert refund.flow_id is None
+        assert refund.related_group_id is None
 
 
 def test_chains_a_same_account_retry_naming_the_same_counterparty(session_factory: sessionmaker):
@@ -836,7 +838,7 @@ def test_chains_a_same_account_retry_naming_the_same_counterparty(session_factor
             other_party=NETFLIX,
             transaction_type=TransactionType.TRANSFER_IN,
         )
-        link_transactions_as_flow(db_session=session, transactions=[outgoing, returned])
+        link_transactions_as_related_group(db_session=session, transactions=[outgoing, returned])
         retry = make_transaction(
             session,
             account_id=account_a.id,
@@ -849,7 +851,7 @@ def test_chains_a_same_account_retry_naming_the_same_counterparty(session_factor
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert retry.flow_id == outgoing.flow_id
+        assert retry.related_group_id == outgoing.related_group_id
         assert retry.transaction_type == TransactionType.TRANSFER_OUT
         assert retry.transfer_original_type == TransactionType.OUTGOING
 
@@ -874,7 +876,7 @@ def test_does_not_chain_a_same_account_leg_with_a_different_counterparty(session
             other_party=NETFLIX,
             transaction_type=TransactionType.TRANSFER_IN,
         )
-        link_transactions_as_flow(db_session=session, transactions=[outgoing, returned])
+        link_transactions_as_related_group(db_session=session, transactions=[outgoing, returned])
         unrelated = make_transaction(
             session,
             account_id=account_a.id,
@@ -887,12 +889,12 @@ def test_does_not_chain_a_same_account_leg_with_a_different_counterparty(session
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert unrelated.flow_id is None
+        assert unrelated.related_group_id is None
 
 
 def _make_broker_setup(session: Session, user: User) -> tuple[object, Account, Account, object]:
     # A Trade-Republic-style broker credential with a cash account and a market-valued depot account, plus an
-    # existing DETECTED flow that already holds the +5000 cash deposit (as after Phase 2 chained it).
+    # existing DETECTED related group that already holds the +5000 cash deposit (as after Phase 2 chained it).
     broker = make_credential(session, user_id=user.id, bank=BankProvider.TRADE_REPUBLIC)
     cash = make_account(session, credential_id=broker.id, name="Cash")
     depot = make_account(session, credential_id=broker.id, name=ETF_NAME)
@@ -918,14 +920,14 @@ def _make_broker_setup(session: Session, user: User) -> tuple[object, Account, A
         date=RECENT_DATE,
         transaction_type=TransactionType.TRANSFER_IN,
     )
-    flow = link_transactions_as_flow(db_session=session, transactions=[outgoing, deposit])
-    return broker, cash, depot, flow
+    related_group = link_transactions_as_related_group(db_session=session, transactions=[outgoing, deposit])
+    return broker, cash, depot, related_group
 
 
-def test_chains_a_depot_buy_into_the_flow_keeping_its_buy_type(session_factory: sessionmaker):
+def test_chains_a_depot_buy_into_the_related_group_keeping_its_buy_type(session_factory: sessionmaker):
     with session_factory() as session:
         user = make_user(session)
-        _, _, depot, flow = _make_broker_setup(session=session, user=user)
+        _, _, depot, related_group = _make_broker_setup(session=session, user=user)
         depot_buy = make_transaction(
             session,
             account_id=depot.id,
@@ -937,8 +939,8 @@ def test_chains_a_depot_buy_into_the_flow_keeping_its_buy_type(session_factory: 
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert depot_buy.flow_id == flow.id
-        assert depot_buy.flow_link_source == FlowLinkSource.DETECTED
+        assert depot_buy.related_group_id == related_group.id
+        assert depot_buy.related_link_source == RelatedLinkSource.DETECTED
         assert depot_buy.transaction_type == TransactionType.BUY
         assert depot_buy.transfer_original_type is None
 
@@ -946,7 +948,7 @@ def test_chains_a_depot_buy_into_the_flow_keeping_its_buy_type(session_factory: 
 def test_chains_the_whole_broker_purchase_depot_and_cash_side(session_factory: sessionmaker):
     with session_factory() as session:
         user = make_user(session)
-        _, cash, depot, flow = _make_broker_setup(session=session, user=user)
+        _, cash, depot, related_group = _make_broker_setup(session=session, user=user)
         depot_buy = make_transaction(
             session,
             account_id=depot.id,
@@ -965,9 +967,9 @@ def test_chains_the_whole_broker_purchase_depot_and_cash_side(session_factory: s
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert depot_buy.flow_id == flow.id
+        assert depot_buy.related_group_id == related_group.id
         assert depot_buy.transaction_type == TransactionType.BUY
-        assert cash_buy.flow_id == flow.id
+        assert cash_buy.related_group_id == related_group.id
         assert cash_buy.transaction_type == TransactionType.TRANSFER_OUT
         assert cash_buy.transfer_original_type == TransactionType.BUY
 
@@ -987,7 +989,7 @@ def test_never_chains_a_lone_cash_leg_without_a_depot_mirror(session_factory: se
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert lone_cash.flow_id is None
+        assert lone_cash.related_group_id is None
 
 
 def test_never_chains_a_pending_broker_leg(session_factory: sessionmaker):
@@ -1002,7 +1004,7 @@ def test_never_chains_a_pending_broker_leg(session_factory: sessionmaker):
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert pending_buy.flow_id is None
+        assert pending_buy.related_group_id is None
 
 
 def test_does_not_chain_a_broker_leg_of_a_different_amount(session_factory: sessionmaker):
@@ -1016,7 +1018,7 @@ def test_does_not_chain_a_broker_leg_of_a_different_amount(session_factory: sess
 
         transfer_detection.detect_transfers_for_user(db_session=session, user=user)
 
-        assert other_buy.flow_id is None
+        assert other_buy.related_group_id is None
 
 
 def test_startup_detection_links_across_all_users(session_factory: sessionmaker, monkeypatch: pytest.MonkeyPatch):
@@ -1044,6 +1046,6 @@ def test_startup_detection_links_across_all_users(session_factory: sessionmaker,
     transfer_detection.detect_transfers_for_all_users()
 
     with session_factory() as session:
-        out_flow = session.get(entity=Transaction, ident=out_id).flow_id
-        assert out_flow is not None
-        assert out_flow == session.get(entity=Transaction, ident=in_id).flow_id
+        out_related_group = session.get(entity=Transaction, ident=out_id).related_group_id
+        assert out_related_group is not None
+        assert out_related_group == session.get(entity=Transaction, ident=in_id).related_group_id

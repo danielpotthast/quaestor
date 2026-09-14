@@ -161,9 +161,9 @@ describe('StatsView', () => {
     expect(onChange.mock.calls.at(-1)?.[0].transactionTypes).toEqual(['FEES'])
   })
 
-  it('has no transfer filter (net-zero flows are hidden automatically)', () => {
+  it('has no related filter (net-zero groups are hidden automatically)', () => {
     renderView()
-    expect(screen.queryByLabelText('Money flow')).toBeNull()
+    expect(screen.queryByLabelText('Related transactions')).toBeNull()
   })
 
   it('fires onChange with chartType pie when switching the category chart to Pie', async () => {

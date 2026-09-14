@@ -30,42 +30,46 @@ class _Leg:
 
 
 @dataclass
-class FlowAnalysis:
+class RelatedGroupAnalysis:
     hidden_ids: set[int] = field(default_factory=set)  # fully canceled legs
     refund_status: dict[int, RefundStatus] = field(default_factory=dict)
 
 
-def analyze(db_session: Session, flow_ids: set[int] | None = None) -> FlowAnalysis:
-    if flow_ids is not None and not flow_ids:
-        return FlowAnalysis()
+def analyze(db_session: Session, related_group_ids: set[int] | None = None) -> RelatedGroupAnalysis:
+    if related_group_ids is not None and not related_group_ids:
+        return RelatedGroupAnalysis()
     query = select(  # noqa: FKA100
-        Transaction.id, Transaction.flow_id, Transaction.amount, Transaction.account_id, Transaction.date
-    ).where(Transaction.flow_id.isnot(None))
-    if flow_ids is not None:
-        query = query.where(Transaction.flow_id.in_(flow_ids))
+        Transaction.id, Transaction.related_group_id, Transaction.amount, Transaction.account_id, Transaction.date
+    ).where(Transaction.related_group_id.isnot(None))
+    if related_group_ids is not None:
+        query = query.where(Transaction.related_group_id.in_(related_group_ids))
 
-    legs_by_flow: dict[int, list[_Leg]] = defaultdict(list)
-    for transaction_id, flow_id, amount, account_id, date in db_session.execute(query):
-        legs_by_flow[flow_id].append(_Leg(id=transaction_id, amount=amount, account_id=account_id, date=date))
+    legs_by_related_group: dict[int, list[_Leg]] = defaultdict(list)
+    for transaction_id, related_group_id, amount, account_id, date in db_session.execute(query):
+        legs_by_related_group[related_group_id].append(
+            _Leg(id=transaction_id, amount=amount, account_id=account_id, date=date)
+        )
 
-    analysis = FlowAnalysis()
-    for legs in legs_by_flow.values():
-        _analyze_flow(legs=legs, analysis=analysis)
+    analysis = RelatedGroupAnalysis()
+    for legs in legs_by_related_group.values():
+        _analyze_related_group(legs=legs, analysis=analysis)
     return analysis
 
 
 def annotate_transactions(
     db_session: Session, transactions: Iterable[Transaction], reads: list[TransactionRead]
 ) -> None:
-    flow_ids = {transaction.flow_id for transaction in transactions if transaction.flow_id is not None}
-    if not flow_ids:
+    related_group_ids = {
+        transaction.related_group_id for transaction in transactions if transaction.related_group_id is not None
+    }
+    if not related_group_ids:
         return
-    refund_status = analyze(db_session=db_session, flow_ids=flow_ids).refund_status
+    refund_status = analyze(db_session=db_session, related_group_ids=related_group_ids).refund_status
     for read in reads:
         read.refund_status = refund_status.get(read.id)
 
 
-def _analyze_flow(legs: list[_Leg], analysis: FlowAnalysis) -> None:
+def _analyze_related_group(legs: list[_Leg], analysis: RelatedGroupAnalysis) -> None:
     inflows = sorted((leg for leg in legs if leg.amount > 0), key=lambda leg: (leg.date, leg.id))
     outflows = [leg for leg in legs if leg.amount < 0]
     refund_inflows: set[int] = set()

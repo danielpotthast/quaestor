@@ -11,11 +11,11 @@ from source.backend.logging_utils import get_logger
 from source.backend.models.accounts.account import Account
 from source.backend.models.auth.user import User
 from source.backend.models.banking.credential import Credential
-from source.backend.models.transactions.flow_link_source import FlowLinkSource
+from source.backend.models.transactions.related_group import RelatedGroup
+from source.backend.models.transactions.related_link_source import RelatedLinkSource
 from source.backend.models.transactions.transaction import Transaction
 from source.backend.models.transactions.transaction_category import TransactionCategory, normalize_string
 from source.backend.models.transactions.transaction_type import TransactionType
-from source.backend.models.transactions.transfer_flow import TransferFlow
 from source.backend.services.accounts import account_service
 from source.backend.services.contracts.contract_aggregators import INTERMEDIARIES
 
@@ -66,7 +66,7 @@ def detect_transfers_for_user(db_session: Session, user: User) -> int:
             .join(Account, onclause=Transaction.account_id == Account.id)
             .join(Credential, onclause=Account.credential_id == Credential.id)
             .where(Credential.user_id == user.id)
-            .where(Transaction.flow_id.is_(None))
+            .where(Transaction.related_group_id.is_(None))
             .where(Transaction.transaction_type.in_(ELIGIBLE_TYPES))
             .where(Transaction.transfer_relink_blocked.is_(False))
             .where(Transaction.pending.is_(False))  # Pending entries are ephemeral; never link them as transfers.
@@ -75,12 +75,12 @@ def detect_transfers_for_user(db_session: Session, user: User) -> int:
     created_transfers = _link_transfer_pairs(db_session=db_session, transactions=unpaired_transactions)
     mirrored = _link_mirror_bookings(db_session=db_session, transactions=unpaired_transactions)
     refunds_linked = _link_refunds_to_payments(db_session=db_session, transactions=unpaired_transactions)
-    chained = _chain_into_detected_flows(db_session=db_session, user=user, unlinked=unpaired_transactions)
+    chained = _chain_into_detected_related_groups(db_session=db_session, user=user, unlinked=unpaired_transactions)
     broker_chained = _chain_broker_legs(db_session=db_session, user=user)
     logger.info(
         f"Transfer detection for {user}: {created_transfers} new transfer pair(s), "
         f"{mirrored} new mirror pair(s), {refunds_linked} refund(s) linked to a payment, "
-        f"{chained} leg(s) chained into existing flows, {broker_chained} broker leg(s) chained"
+        f"{chained} leg(s) chained into existing related groups, {broker_chained} broker leg(s) chained"
     )
     return created_transfers + mirrored + refunds_linked + chained + broker_chained
 
@@ -101,11 +101,11 @@ async def run_startup_detection() -> None:
         logger.exception(message="Startup transfer detection backfill crashed")
 
 
-def _new_flow(db_session: Session) -> TransferFlow:
-    flow = TransferFlow()
-    db_session.add(flow)
+def _new_related_group(db_session: Session) -> RelatedGroup:
+    related_group = RelatedGroup()
+    db_session.add(related_group)
     db_session.flush()
-    return flow
+    return related_group
 
 
 def _link_transfer_pairs(db_session: Session, transactions: list[Transaction]) -> int:
@@ -128,15 +128,15 @@ def _link_transfer_pairs(db_session: Session, transactions: list[Transaction]) -
             logger.debug(f"No transfer match for outflow {outflow}")
             continue
         best = min(candidates, key=lambda inflow: _candidate_rank(outflow=outflow, inflow=inflow))
-        flow = _new_flow(db_session=db_session)
+        related_group = _new_related_group(db_session=db_session)
         outflow.transfer_original_type = outflow.transaction_type
         best.transfer_original_type = best.transaction_type
         outflow.transaction_type = TransactionType.TRANSFER_OUT
         best.transaction_type = TransactionType.TRANSFER_IN
-        outflow.flow_id = flow.id
-        best.flow_id = flow.id
-        outflow.flow_link_source = FlowLinkSource.DETECTED
-        best.flow_link_source = FlowLinkSource.DETECTED
+        outflow.related_group_id = related_group.id
+        best.related_group_id = related_group.id
+        outflow.related_link_source = RelatedLinkSource.DETECTED
+        best.related_link_source = RelatedLinkSource.DETECTED
         if best.account_id == outflow.account_id:
             best.category = TransactionCategory.REIMBURSEMENT
         consumed_inflow_ids.add(best.id)
@@ -185,7 +185,7 @@ def _link_mirror_bookings(db_session: Session, transactions: list[Transaction]) 
     if not intermediaries:
         return 0
 
-    pool = [t for t in transactions if t.flow_id is None]
+    pool = [t for t in transactions if t.related_group_id is None]
     intermediary_legs = sorted((t for t in pool if t.account_id in intermediaries), key=lambda t: (t.date, t.id))
     funding_legs = [t for t in pool if t.account_id not in intermediaries]
 
@@ -207,13 +207,13 @@ def _link_mirror_bookings(db_session: Session, transactions: list[Transaction]) 
                 intermediary_leg=intermediary_leg, funding_leg=funding_leg, extract_merchant=extract_merchant
             ),
         )
-        flow = _new_flow(db_session=db_session)
+        related_group = _new_related_group(db_session=db_session)
         best.transfer_original_type = best.transaction_type
         best.transaction_type = TransactionType.TRANSFER_OUT if best.amount < 0 else TransactionType.TRANSFER_IN
-        best.flow_id = flow.id
-        intermediary_leg.flow_id = flow.id
-        best.flow_link_source = FlowLinkSource.DETECTED
-        intermediary_leg.flow_link_source = FlowLinkSource.DETECTED
+        best.related_group_id = related_group.id
+        intermediary_leg.related_group_id = related_group.id
+        best.related_link_source = RelatedLinkSource.DETECTED
+        intermediary_leg.related_link_source = RelatedLinkSource.DETECTED
         consumed_funding_ids.add(best.id)
         created += 1
         logger.debug(
@@ -231,7 +231,10 @@ def _link_refunds_to_payments(db_session: Session, transactions: list[Transactio
     refunds = [
         t
         for t in transactions
-        if t.flow_id is None and t.amount > 0 and t.category == TransactionCategory.REIMBURSEMENT and t.other_party
+        if t.related_group_id is None
+        and t.amount > 0
+        and t.category == TransactionCategory.REIMBURSEMENT
+        and t.other_party
     ]
     consumed_outflow_ids: set[int] = set()
     created = 0
@@ -240,7 +243,7 @@ def _link_refunds_to_payments(db_session: Session, transactions: list[Transactio
         candidates = [
             outflow
             for outflow in transactions
-            if outflow.flow_id is None
+            if outflow.related_group_id is None
             and outflow.id not in consumed_outflow_ids
             and outflow.amount < 0
             and abs(outflow.amount) >= refund.amount
@@ -251,71 +254,74 @@ def _link_refunds_to_payments(db_session: Session, transactions: list[Transactio
         if len(candidates) != 1:
             continue
         outflow = candidates[0]
-        flow = _new_flow(db_session=db_session)
+        related_group = _new_related_group(db_session=db_session)
         outflow.transfer_original_type = outflow.transaction_type
         refund.transfer_original_type = refund.transaction_type
         outflow.transaction_type = TransactionType.TRANSFER_OUT
         refund.transaction_type = TransactionType.TRANSFER_IN
-        outflow.flow_id = flow.id
-        refund.flow_id = flow.id
-        outflow.flow_link_source = FlowLinkSource.DETECTED
-        refund.flow_link_source = FlowLinkSource.DETECTED
+        outflow.related_group_id = related_group.id
+        refund.related_group_id = related_group.id
+        outflow.related_link_source = RelatedLinkSource.DETECTED
+        refund.related_link_source = RelatedLinkSource.DETECTED
         consumed_outflow_ids.add(outflow.id)
         created += 1
         logger.debug(f"Linked refund {refund} to payment {outflow}")
     return created
 
 
-def _is_open_end(member: Transaction, flow_members: list[Transaction]) -> bool:
-    # A member is an open end if its cross-account counter-leg is still missing from the flow: money can
+def _is_open_end(member: Transaction, related_group_members: list[Transaction]) -> bool:
+    # A member is an open end if its cross-account counter-leg is still missing from the related group: money can
     # only be forwarded once. A same-account counter-booking (reimbursement) does _not_ close it.
-    return not any(other.amount == -member.amount and other.account_id != member.account_id for other in flow_members)
+    return not any(
+        other.amount == -member.amount and other.account_id != member.account_id for other in related_group_members
+    )
 
 
-def _chain_into_detected_flows(db_session: Session, user: User, unlinked: list[Transaction]) -> int:
-    members_by_flow: dict[int, list[Transaction]] = {}
+def _chain_into_detected_related_groups(db_session: Session, user: User, unlinked: list[Transaction]) -> int:
+    members_by_related_group: dict[int, list[Transaction]] = {}
     for member in db_session.scalars(
         select(Transaction)
         .join(Account, onclause=Transaction.account_id == Account.id)
         .join(Credential, onclause=Account.credential_id == Credential.id)
         .where(Credential.user_id == user.id)
-        .where(Transaction.flow_id.is_not(None))
-        .where(Transaction.flow_link_source == FlowLinkSource.DETECTED)
+        .where(Transaction.related_group_id.is_not(None))
+        .where(Transaction.related_link_source == RelatedLinkSource.DETECTED)
         .where(Transaction.pending.is_(False))
     ):
-        members_by_flow.setdefault(cast(int, member.flow_id), []).append(member)  # noqa: FKA100
-    candidates = [leg for leg in unlinked if leg.flow_id is None]
+        members_by_related_group.setdefault(cast(int, member.related_group_id), []).append(member)  # noqa: FKA100
+    candidates = [leg for leg in unlinked if leg.related_group_id is None]
 
     created = 0
     progressed = True
     while progressed:
         progressed = False
         for leg in candidates:
-            if leg.flow_id is not None:
+            if leg.related_group_id is not None:
                 continue
-            matched_flows = {
-                flow_id
-                for flow_id, members in members_by_flow.items()
+            matched_related_groups = {
+                related_group_id
+                for related_group_id, members in members_by_related_group.items()
                 if any(
-                    _is_open_end(member=m, flow_members=members) and _is_chain_hop(leg=leg, member=m) for m in members
+                    _is_open_end(member=m, related_group_members=members) and _is_chain_hop(leg=leg, member=m)
+                    for m in members
                 )
             }
-            if len(matched_flows) != 1:  # 0 = no match, >1 = ambiguous; both skip
+            if len(matched_related_groups) != 1:  # 0 = no match, >1 = ambiguous; both skip
                 continue
-            flow_id = matched_flows.pop()
+            related_group_id = matched_related_groups.pop()
             leg.transfer_original_type = leg.transaction_type
             leg.transaction_type = TransactionType.TRANSFER_OUT if leg.amount < 0 else TransactionType.TRANSFER_IN
-            leg.flow_id = flow_id
-            leg.flow_link_source = FlowLinkSource.DETECTED
-            members_by_flow[flow_id].append(leg)
+            leg.related_group_id = related_group_id
+            leg.related_link_source = RelatedLinkSource.DETECTED
+            members_by_related_group[related_group_id].append(leg)
             created += 1
             progressed = True
-            logger.debug(f"Chained {leg} into flow {flow_id}")
+            logger.debug(f"Chained {leg} into related group {related_group_id}")
     return created
 
 
 def _is_chain_hop(leg: Transaction, member: Transaction) -> bool:
-    # A leg chains onto a flow member in two shapes, both within TRANSFER_MAX_DISTANCE:
+    # A leg chains onto a related group member in two shapes, both within TRANSFER_MAX_DISTANCE:
     #  - cross-account self-transfer: exact counter-amount on a *different* account (the classic hop), or
     #  - same-account retry cluster: same |amount| and same counterparty on the *same* account
     #    (e.g. a rejected debit re-attempted
@@ -332,20 +338,20 @@ def _is_chain_hop(leg: Transaction, member: Transaction) -> bool:
     return _is_match(outflow=outflow, inflow=inflow)
 
 
-def _attach_broker_leg(leg: Transaction, flow_id: int, market_valued_ids: set[int]) -> None:
+def _attach_broker_leg(leg: Transaction, related_group_id: int, market_valued_ids: set[int]) -> None:
     # Market-valued depot legs keep their BUY/SELL type: the depot sign-flip (see flip_depot_signs) depends on it.
-    # Cash-side legs become plain transfers like any other flow member.
+    # Cash-side legs become plain transfers like any other related group member.
     if leg.account_id not in market_valued_ids:
         leg.transfer_original_type = leg.transaction_type
         leg.transaction_type = TransactionType.TRANSFER_OUT if leg.amount < 0 else TransactionType.TRANSFER_IN
-    leg.flow_id = flow_id
-    leg.flow_link_source = FlowLinkSource.DETECTED
+    leg.related_group_id = related_group_id
+    leg.related_link_source = RelatedLinkSource.DETECTED
 
 
 def _chain_broker_legs(db_session: Session, user: User) -> int:
     # A broker purchase (deposit -> cash-side buy -> depot mirror booking) spreads legs of the same amount across
     # the broker's cash and depot accounts, days apart and not sign-opposed, so the strict transfer match misses
-    # them. Attach such a leg to a DETECTED flow when exactly one flow already holds a member on the SAME
+    # them. Attach such a leg to a DETECTED related group when exactly one related group already holds a member on the SAME
     # credential with the same absolute amount within BROKER_LEG_MAX_DISTANCE. Scoped to broker credentials.
     market_valued_ids = set(db_session.scalars(account_service.market_valued_account_ids_select()))
     broker_credential_ids = set(
@@ -360,24 +366,28 @@ def _chain_broker_legs(db_session: Session, user: User) -> int:
         return 0
 
     members = []
-    flows_with_depot: set[int] = set()
+    related_groups_with_depot: set[int] = set()
     for row in db_session.execute(
         select(  # noqa: FKA100
-            Transaction.flow_id, Account.credential_id, Transaction.amount, Transaction.date, Transaction.account_id
+            Transaction.related_group_id,
+            Account.credential_id,
+            Transaction.amount,
+            Transaction.date,
+            Transaction.account_id,
         )
         .join(Account, onclause=Transaction.account_id == Account.id)
-        .where(Transaction.flow_id.is_not(None))
-        .where(Transaction.flow_link_source == FlowLinkSource.DETECTED)
+        .where(Transaction.related_group_id.is_not(None))
+        .where(Transaction.related_link_source == RelatedLinkSource.DETECTED)
         .where(Account.credential_id.in_(broker_credential_ids))
     ):
-        members.append((row.flow_id, row.credential_id, abs(row.amount), row.date))
+        members.append((row.related_group_id, row.credential_id, abs(row.amount), row.date))
         if row.account_id in market_valued_ids:
-            flows_with_depot.add(row.flow_id)
+            related_groups_with_depot.add(row.related_group_id)
     candidates = list(
         db_session.scalars(
             select(Transaction)
             .join(Account, onclause=Transaction.account_id == Account.id)
-            .where(Transaction.flow_id.is_(None))
+            .where(Transaction.related_group_id.is_(None))
             .where(Transaction.pending.is_(False))
             .where(Account.credential_id.in_(broker_credential_ids))
         )
@@ -388,26 +398,26 @@ def _chain_broker_legs(db_session: Session, user: User) -> int:
     while progressed:  # fixpoint: a chained leg becomes a member the next leg can match against
         progressed = False
         for leg in candidates:
-            if leg.flow_id is not None:
+            if leg.related_group_id is not None:
                 continue
             leg_is_depot = leg.account_id in market_valued_ids
             leg_credential_id = leg.account.credential_id
-            matched_flows = {
-                flow_id
-                for flow_id, credential_id, amount, member_date in members
+            matched_related_groups = {
+                related_group_id
+                for related_group_id, credential_id, amount, member_date in members
                 if credential_id == leg_credential_id
                 and amount == abs(leg.amount)
                 and abs(member_date - leg.date) <= BROKER_LEG_MAX_DISTANCE
-                and (leg_is_depot or flow_id in flows_with_depot)
+                and (leg_is_depot or related_group_id in related_groups_with_depot)
             }
-            if len(matched_flows) != 1:  # 0 = no match, >1 = ambiguous; both skip
+            if len(matched_related_groups) != 1:  # 0 = no match, >1 = ambiguous; both skip
                 continue
-            flow_id = matched_flows.pop()
-            _attach_broker_leg(leg=leg, flow_id=flow_id, market_valued_ids=market_valued_ids)
-            members.append((flow_id, leg_credential_id, abs(leg.amount), leg.date))
+            related_group_id = matched_related_groups.pop()
+            _attach_broker_leg(leg=leg, related_group_id=related_group_id, market_valued_ids=market_valued_ids)
+            members.append((related_group_id, leg_credential_id, abs(leg.amount), leg.date))
             if leg_is_depot:
-                flows_with_depot.add(flow_id)
+                related_groups_with_depot.add(related_group_id)
             created += 1
             progressed = True
-            logger.debug(f"Chained broker leg {leg} into flow {flow_id}")
+            logger.debug(f"Chained broker leg {leg} into related group {related_group_id}")
     return created

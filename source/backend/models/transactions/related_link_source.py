@@ -1,6 +1,6 @@
 from enum import Enum
 
 
-class FlowLinkSource(str, Enum):
+class RelatedLinkSource(str, Enum):
     DETECTED = "DETECTED"
     MANUAL = "MANUAL"

@@ -139,7 +139,7 @@ describe('TransactionSearchView — form', () => {
     expect(dateTriggers).toHaveLength(2)
     expect(screen.getByLabelText('Type')).toBeInTheDocument()
     expect(screen.getByLabelText('Categories')).toBeInTheDocument()
-    expect(screen.getByLabelText('Money flow')).toBeInTheDocument()
+    expect(screen.getByLabelText('Related transactions')).toBeInTheDocument()
   })
 
   it('searches automatically — there is no submit button', () => {
@@ -152,8 +152,8 @@ describe('TransactionSearchView — form', () => {
     const user = userEvent.setup()
     const { onChange } = renderView()
 
-    await user.click(screen.getByLabelText('Money flow'))
-    await user.click(document.getElementById('transfer-unlinked')!)
+    await user.click(screen.getByLabelText('Related transactions'))
+    await user.click(document.getElementById('related-unlinked')!)
 
     await waitFor(() => expect(lastPayload(onChange)?.filters.linked).toBe('linked'))
   })
@@ -202,7 +202,7 @@ describe('TransactionSearchView — form', () => {
   it('prefills the type and transfer pickers from the URL (a stats drill-in)', () => {
     renderView({ search: { transaction_types: ['FEES'], linked: 'linked' } })
     expect(screen.getByLabelText('Type').textContent).toContain('1 type')
-    expect(screen.getByLabelText('Money flow').textContent).toContain('Part of a money flow')
+    expect(screen.getByLabelText('Related transactions').textContent).toContain('Linked')
   })
 
   it('renders translated labels for the transaction type options', async () => {
@@ -527,24 +527,24 @@ describe('TransactionSearchView — link mode', () => {
     expect(screen.queryByText('Pending Party')).toBeNull()
   })
 
-  it('excludes transactions already in the source flow (linking them again would conflict)', async () => {
-    const inFlow = {
+  it('excludes transactions already in the source group (linking them again would conflict)', async () => {
+    const inGroup = {
       id: 8,
       account_id: 42,
       amount: AMOUNT_S,
       purpose: null,
       date: DATE_RECENT,
-      other_party: 'In-Flow Party',
+      other_party: 'In-Group Party',
       transaction_type: null,
       category: 'UNKNOWN',
       note: null,
     }
-    const free = { ...inFlow, id: 9, other_party: 'Free Party' }
+    const free = { ...inGroup, id: 9, other_party: 'Free Party' }
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString()
       const body = url.includes('/transactions/search')
-        ? [inFlow, free]
-        : { id: 7, account_id: 42, flow_members: [inFlow] }
+        ? [inGroup, free]
+        : { id: 7, account_id: 42, related_transactions: [inGroup] }
       return Promise.resolve(
         new Response(JSON.stringify(body), {
           status: 200,
@@ -558,7 +558,7 @@ describe('TransactionSearchView — link mode', () => {
     })
 
     expect(await screen.findByText('Free Party')).toBeInTheDocument()
-    expect(screen.queryByText('In-Flow Party')).toBeNull()
+    expect(screen.queryByText('In-Group Party')).toBeNull()
   })
 
   it('propagates the link params on each result row link', async () => {

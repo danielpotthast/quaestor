@@ -20,11 +20,11 @@ from source.backend.api.schemas.transactions.recurring_transaction import (
     RecurringTransactionUpdate,
 )
 from source.backend.api.schemas.transactions.transaction import (
+    RelatedLinkCreate,
     TransactionCreate,
     TransactionDetailRead,
     TransactionRead,
     TransactionUpdate,
-    TransferLinkCreate,
 )
 from source.backend.db import get_session
 from source.backend.exceptions import ConflictError, PermissionDeniedError
@@ -35,7 +35,7 @@ from source.backend.models.transactions.transaction import Transaction
 from source.backend.services.accounts import account_service
 from source.backend.services.auth import session_service
 from source.backend.services.banking import credential_service
-from source.backend.services.transactions import attachment_service, flow_refunds, recurring_transaction_service
+from source.backend.services.transactions import attachment_service, recurring_transaction_service, related_refunds
 
 router = create_router()
 
@@ -44,17 +44,17 @@ def detail_read(db_session: Session, transaction: Transaction, user: User) -> Tr
     # Serialize a single transaction and flip buy/sell signs if it lives on a depot (see flip_depot_signs).
     read = TransactionDetailRead.model_validate(transaction)
     members = []
-    if transaction.flow is not None:
+    if transaction.related_group is not None:
         members = [
             TransactionRead.model_validate(member)
-            for member in transaction.flow.transactions
+            for member in transaction.related_group.transactions
             if member.id != transaction.id and account_service.can_read(account=member.account, user=user)
         ]
-    read.flow_members = members
+    read.related_transactions = members
     account_ids = [transaction.account_id, *(member.account_id for member in members)]
     market_valued = account_service.market_valued_ids(db_session=db_session, account_ids=account_ids)
     TransactionRead.flip_depot_signs(reads=[read, *members], market_valued_account_ids=market_valued)
-    flow_refunds.annotate_transactions(db_session=db_session, transactions=[transaction], reads=[read, *members])
+    related_refunds.annotate_transactions(db_session=db_session, transactions=[transaction], reads=[read, *members])
     return read
 
 
@@ -144,10 +144,10 @@ def delete_transaction(
     account_service.delete_transaction(db_session=db_session, account=account, transaction=transaction)
 
 
-@router.put("/{account_id}/transactions/{transaction_id}/transfer-link", response_model=TransactionDetailRead)
-def add_to_flow(
+@router.put("/{account_id}/transactions/{transaction_id}/related-link", response_model=TransactionDetailRead)
+def link_related(
     transaction_id: int,
-    payload: TransferLinkCreate,
+    payload: RelatedLinkCreate,
     account: Account = Depends(owned_account),
     current_user: User = Depends(session_service.get_current_user_from_request),
     db_session: Session = Depends(get_session),
@@ -164,12 +164,12 @@ def add_to_flow(
     counterpart = account_service.get_transaction_for_account(
         db_session=db_session, account=counterpart_account, transaction_id=payload.counterpart_transaction_id
     )
-    account_service.add_to_flow(db_session=db_session, transaction=transaction, counterpart=counterpart)
+    account_service.link_related(db_session=db_session, transaction=transaction, counterpart=counterpart)
     return detail_read(db_session=db_session, transaction=transaction, user=current_user)
 
 
-@router.delete("/{account_id}/transactions/{transaction_id}/transfer-link", status_code=204)
-def remove_from_flow(
+@router.delete("/{account_id}/transactions/{transaction_id}/related-link", status_code=204)
+def unlink_related(
     transaction_id: int,
     account: Account = Depends(owned_account),
     db_session: Session = Depends(get_session),
@@ -177,7 +177,7 @@ def remove_from_flow(
     transaction = account_service.get_transaction_for_account(
         db_session=db_session, account=account, transaction_id=transaction_id
     )
-    account_service.remove_from_flow(db_session=db_session, transaction=transaction)
+    account_service.unlink_related(db_session=db_session, transaction=transaction)
 
 
 @router.get("/{account_id}/transactions/{transaction_id}", response_model=TransactionDetailRead)
@@ -409,7 +409,7 @@ def get_account_history(
     reads = [TransactionRead.model_validate(transaction) for transaction in transactions]
     market_valued = account_service.market_valued_ids(db_session=db_session, account_ids=[account.id])
     TransactionRead.flip_depot_signs(reads=reads, market_valued_account_ids=market_valued)
-    flow_refunds.annotate_transactions(db_session=db_session, transactions=transactions, reads=reads)
+    related_refunds.annotate_transactions(db_session=db_session, transactions=transactions, reads=reads)
     return AccountHistory(
         transactions=reads,
         balance_at_date=balance_at_date,

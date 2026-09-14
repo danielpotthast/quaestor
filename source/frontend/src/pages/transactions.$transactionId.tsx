@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button'
 import { SingleSelectPopover } from '@/components/ui/single-select-popover'
 import { cn } from '@/lib/utils'
 import type {
-  FlowMemberView,
+  RelatedTransactionView,
   TransactionDetailViewProps,
 } from '@/routes/transactions.$transactionId'
 import { BackLink } from '@/components/back-link'
@@ -51,7 +51,7 @@ export function TransactionDetailView({
   accountName,
   bankName,
   bankIcon,
-  flowMembers,
+  relatedTransactions,
   linking,
   canWrite = true,
   canUnlink = true,
@@ -126,9 +126,9 @@ export function TransactionDetailView({
             />
           )}
         </DetailRow>
-        {flowMembers.length > 0 || linkSection ? (
-          <FlowSection
-            members={flowMembers}
+        {relatedTransactions.length > 0 || linkSection ? (
+          <RelatedSection
+            members={relatedTransactions}
             onUnlink={onUnlink}
             linkAction={linkSection}
             canUnlink={canUnlink && !linking}
@@ -174,13 +174,13 @@ export function TransactionDetailView({
   )
 }
 
-function FlowSection({
+function RelatedSection({
   members,
   onUnlink,
   linkAction,
   canUnlink = true,
 }: {
-  members: FlowMemberView[]
+  members: RelatedTransactionView[]
   onUnlink: (transaction: TransactionRead) => Promise<unknown>
   linkAction?: React.ReactNode
   canUnlink?: boolean
@@ -190,27 +190,27 @@ function FlowSection({
   const showAmount = new Set(members.map((member) => Math.abs(member.transaction.amount))).size > 1
 
   const dedupe = (values: string[]) => Array.from(new Set(values))
-  const flowDatesCompact = dedupe(
+  const relatedDatesCompact = dedupe(
     members.map((member) => formatDateCompact(member.transaction.date)),
   )
-  const flowDates = dedupe(
+  const relatedDates = dedupe(
     members.map((member) => formatDateShortWeekdayWithoutYear(member.transaction.date)),
   )
 
   return (
-    <DetailRow label={t('transaction.flow')} align="start">
+    <DetailRow label={t('transaction.related')} align="start">
       <div className="flex w-full flex-col gap-3">
         {members.length > 0 ? (
           <ol className="flex flex-col">
             {members.map((member, index) => (
-              <FlowTimelineRow
+              <RelatedTimelineRow
                 key={member.transaction.id}
                 member={member}
                 isFirst={index === 0}
                 isLast={index === members.length - 1}
                 showAmount={showAmount}
-                flowDates={flowDates}
-                flowDatesCompact={flowDatesCompact}
+                relatedDates={relatedDates}
+                relatedDatesCompact={relatedDatesCompact}
                 onRemove={canUnlink ? () => onUnlink(member.transaction) : undefined}
               />
             ))}
@@ -222,21 +222,21 @@ function FlowSection({
   )
 }
 
-function FlowTimelineRow({
+function RelatedTimelineRow({
   member,
   isFirst,
   isLast,
   showAmount,
-  flowDates,
-  flowDatesCompact,
+  relatedDates,
+  relatedDatesCompact,
   onRemove,
 }: {
-  member: FlowMemberView
+  member: RelatedTransactionView
   isFirst: boolean
   isLast: boolean
   showAmount: boolean
-  flowDates: string[]
-  flowDatesCompact: string[]
+  relatedDates: string[]
+  relatedDatesCompact: string[]
   onRemove?: () => Promise<unknown>
 }) {
   const { t } = useTranslation()
@@ -261,7 +261,7 @@ function FlowTimelineRow({
     <RowActions
       onDelete={handleRemove}
       deleting={pending}
-      confirmLabel={t('transaction.removeFromFlow')}
+      confirmLabel={t('transaction.removeFromRelated')}
       renderTrigger={(confirm) => (
         <Button
           type="button"
@@ -269,7 +269,7 @@ function FlowTimelineRow({
           size="icon-sm"
           className="text-muted-foreground hover:text-destructive shrink-0"
           onClick={confirm}
-          aria-label={t('transaction.removeFromFlow')}
+          aria-label={t('transaction.removeFromRelated')}
         >
           <Unlink className="size-4" aria-hidden="true" />
         </Button>
@@ -342,7 +342,7 @@ function FlowTimelineRow({
         <div className="flex shrink-0 flex-col items-center gap-0.5 sm:flex-row sm:gap-2">
           <span className="text-muted-foreground whitespace-nowrap text-xs tabular-nums">
             <span className="inline-grid sm:hidden">
-              {flowDatesCompact.map((date) => (
+              {relatedDatesCompact.map((date) => (
                 <span key={date} aria-hidden="true" className="invisible col-start-1 row-start-1">
                   {date}
                 </span>
@@ -350,7 +350,7 @@ function FlowTimelineRow({
               <span className="col-start-1 row-start-1">{formatDateCompact(transaction.date)}</span>
             </span>
             <span className="hidden sm:inline-grid">
-              {flowDates.map((date) => (
+              {relatedDates.map((date) => (
                 <span key={date} aria-hidden="true" className="invisible col-start-1 row-start-1">
                   {date}
                 </span>

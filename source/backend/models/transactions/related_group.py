@@ -8,12 +8,12 @@ if TYPE_CHECKING:
     from source.backend.models.transactions.transaction import Transaction
 
 
-class TransferFlow(Base):
-    __tablename__ = "transfer_flows"
+class RelatedGroup(Base):
+    __tablename__ = "related_groups"
     id: Mapped[int] = mapped_column(primary_key=True)
 
     transactions: Mapped[list["Transaction"]] = relationship(
-        back_populates="flow",
+        back_populates="related_group",
         order_by="(Transaction.date, Transaction.amount)",
         passive_deletes=True,
     )

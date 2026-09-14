@@ -1,14 +1,14 @@
 from sqlalchemy.orm import sessionmaker
 
 from source.backend.models.transactions.transaction_category import TransactionCategory
-from source.backend.services.transactions import flow_refunds
+from source.backend.services.transactions import related_refunds
 from tests.backend.conftest import (
     DEFAULT_AMOUNT,
     LATEST_DATE,
     OLDER_DATE,
     RECENT_DATE,
     SECOND_AMOUNT,
-    link_transactions_as_flow,
+    link_transactions_as_related_group,
     make_account,
     make_transaction,
     make_user_and_credential_and_account,
@@ -36,11 +36,11 @@ def test_returned_payment_and_retry_hides_the_reversed_pair_and_badges_it(sessio
             date=LATEST_DATE,
         )
         session.flush()
-        link_transactions_as_flow(db_session=session, transactions=[returned, reimbursement, retry])
+        link_transactions_as_related_group(db_session=session, transactions=[returned, reimbursement, retry])
         session.commit()
         returned_id, reimbursement_id, retry_id = returned.id, reimbursement.id, retry.id
 
-        analysis = flow_refunds.analyze(db_session=session)
+        analysis = related_refunds.analyze(db_session=session)
 
     assert analysis.hidden_ids == {returned_id, reimbursement_id}
     assert analysis.refund_status == {returned_id: "refunded", reimbursement_id: "refund"}
@@ -54,11 +54,11 @@ def test_cross_account_transfer_is_hidden_but_not_badged(session_factory: sessio
         out = make_transaction(session, account_id=source.id, amount=-DEFAULT_AMOUNT, date=OLDER_DATE)
         incoming = make_transaction(session, account_id=target.id, amount=DEFAULT_AMOUNT, date=RECENT_DATE)
         session.flush()
-        link_transactions_as_flow(db_session=session, transactions=[out, incoming])
+        link_transactions_as_related_group(db_session=session, transactions=[out, incoming])
         session.commit()
         ids = {out.id, incoming.id}
 
-        analysis = flow_refunds.analyze(db_session=session)
+        analysis = related_refunds.analyze(db_session=session)
 
     assert analysis.hidden_ids == ids
     assert analysis.refund_status == {}
@@ -82,11 +82,11 @@ def test_partial_refund_keeps_both_legs_visible_and_badges_partial(session_facto
             date=RECENT_DATE,
         )
         session.flush()
-        link_transactions_as_flow(db_session=session, transactions=[payment, partial])
+        link_transactions_as_related_group(db_session=session, transactions=[payment, partial])
         session.commit()
         payment_id, partial_id = payment.id, partial.id
 
-        analysis = flow_refunds.analyze(db_session=session)
+        analysis = related_refunds.analyze(db_session=session)
 
     assert analysis.hidden_ids == set()
     assert analysis.refund_status == {payment_id: "partially_refunded", partial_id: "refund"}
@@ -110,11 +110,11 @@ def test_money_flow_hop_through_an_account_is_hidden_but_not_badged(session_fact
             date=LATEST_DATE,
         )
         session.flush()
-        link_transactions_as_flow(db_session=session, transactions=[incoming, passed_on])
+        link_transactions_as_related_group(db_session=session, transactions=[incoming, passed_on])
         session.commit()
         incoming_id, passed_on_id = incoming.id, passed_on.id
 
-        analysis = flow_refunds.analyze(db_session=session)
+        analysis = related_refunds.analyze(db_session=session)
 
     assert analysis.hidden_ids == {incoming_id, passed_on_id}
     assert analysis.refund_status == {}

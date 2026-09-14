@@ -616,10 +616,10 @@
     "refundBadge": "Erstattung",
     "pendingHint": "Vorgemerkt — noch nicht endgültig gebucht und kann sich noch ändern",
     "notFound": "Die Transaktion, die du suchst, dies nicht sie ist.",
-    "flow": "Geldfluss",
+    "related": "Verknüpfte Transaktionen",
     "incoming": "Eingehend",
     "outgoing": "Ausgehend",
-    "removeFromFlow": "Aus Geldfluss entfernen",
+    "removeFromRelated": "Verknüpfung entfernen",
     "unlinkFailed": "Verbindung konnte nicht gelöst werden",
     "categoryUpdateFailed": "Kategorie konnte nicht gespeichert werden",
     "linkedAccountUnknown": "Anderes Konto",
@@ -639,10 +639,10 @@
     "rejectedSizeGeneric": "Datei zu groß"
   },
   "filters": {
-    "transferLabel": "$t(transaction.flow)",
-    "transfer": {
-      "linked": "Teil eines Geldflusses",
-      "unlinked": "Nicht Teil eines Geldflusses"
+    "relatedLabel": "$t(transaction.related)",
+    "related": {
+      "linked": "Mit Verknüpfung",
+      "unlinked": "Ohne Verknüpfung"
     },
     "attachmentLabel": "Anhang",
     "attachment": {

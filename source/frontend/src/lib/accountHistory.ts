@@ -21,7 +21,7 @@ export interface TransactionRead {
 export type RefundStatus = 'refunded' | 'partially_refunded' | 'refund'
 
 export interface TransactionDetailRead extends TransactionRead {
-  flow_members: TransactionRead[]
+  related_transactions: TransactionRead[]
 }
 
 export interface AccountHistoryPage {

@@ -217,8 +217,8 @@ function SearchForm({
               next.length === TRANSACTION_TYPES.length ? undefined : next,
             )
           }
-          transfer={draft.linked}
-          onTransferChange={(next) => onUpdate('linked', next)}
+          related={draft.linked}
+          onRelatedChange={(next) => onUpdate('linked', next)}
           attachment={draft.has_attachment}
           onAttachmentChange={(next) => onUpdate('has_attachment', next)}
         />
@@ -261,7 +261,7 @@ function SearchResults({
   const excludedKeys = useMemo(() => {
     const keys = new Set<string>()
     if (linkSource) keys.add(`${linkSource.accountId}-${linkSource.transactionId}`)
-    for (const member of source.data?.flow_members ?? [])
+    for (const member of source.data?.related_transactions ?? [])
       keys.add(`${member.account_id}-${member.id}`)
     return keys
   }, [linkSource, source.data])

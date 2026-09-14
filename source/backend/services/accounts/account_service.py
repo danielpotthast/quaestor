@@ -20,12 +20,12 @@ from source.backend.models.accounts.account_share import AccountShare, SharePerm
 from source.backend.models.auth.user import User
 from source.backend.models.banking.credential import Credential
 from source.backend.models.base import snapshot_columns
-from source.backend.models.transactions.flow_link_source import FlowLinkSource
+from source.backend.models.transactions.related_group import RelatedGroup
+from source.backend.models.transactions.related_link_source import RelatedLinkSource
 from source.backend.models.transactions.transaction import Transaction
 from source.backend.models.transactions.transaction_attachment import TransactionAttachment
 from source.backend.models.transactions.transaction_category import TransactionCategory
 from source.backend.models.transactions.transaction_type import TransactionType
-from source.backend.models.transactions.transfer_flow import TransferFlow
 
 logger = get_logger(__name__)
 
@@ -378,79 +378,83 @@ def delete_expected_transaction(db_session: Session, account: Account, expected_
     logger.info(f"Deleted expected transaction {expected_transaction_id} from {account}")
 
 
-def add_to_flow(db_session: Session, transaction: Transaction, counterpart: Transaction) -> None:
+def link_related(db_session: Session, transaction: Transaction, counterpart: Transaction) -> None:
     if transaction.id == counterpart.id:
         raise ValidationError("A transaction cannot be linked to itself")
     if transaction.pending or counterpart.pending:
         raise ValidationError("Pending transactions cannot be linked as transfers")
-    if transaction.flow_id is not None and transaction.flow_id == counterpart.flow_id:
-        raise ConflictError("Both transactions are already in the same flow")
+    if transaction.related_group_id is not None and transaction.related_group_id == counterpart.related_group_id:
+        raise ConflictError("Both transactions are already in the same related group")
 
-    flow = _resolve_target_flow(db_session=db_session, transaction=transaction, counterpart=counterpart)
+    related_group = _resolve_target_related_group(
+        db_session=db_session, transaction=transaction, counterpart=counterpart
+    )
     for leg in (transaction, counterpart):
-        _add_to_flow(leg=leg, flow=flow)
+        _add_to_related_group(leg=leg, related_group=related_group)
 
     db_session.commit()
-    logger.info(f"Linked {transaction} and {counterpart} into flow {flow}")
+    logger.info(f"Linked {transaction} and {counterpart} into related group {related_group}")
 
 
-def remove_from_flow(db_session: Session, transaction: Transaction) -> None:
-    flow_id = transaction.flow_id
-    if flow_id is None:
+def unlink_related(db_session: Session, transaction: Transaction) -> None:
+    related_group_id = transaction.related_group_id
+    if related_group_id is None:
         return
-    _detach_from_flow(leg=transaction)
+    _detach_from_related_group(leg=transaction)
 
-    remaining = list(db_session.scalars(select(Transaction).where(Transaction.flow_id == flow_id)))
+    remaining = list(db_session.scalars(select(Transaction).where(Transaction.related_group_id == related_group_id)))
     if len(remaining) < 2:
         for member in remaining:
-            _detach_from_flow(leg=member)
-        flow = db_session.get(entity=TransferFlow, ident=flow_id)
-        if flow is not None:
-            db_session.delete(flow)
+            _detach_from_related_group(leg=member)
+        related_group = db_session.get(entity=RelatedGroup, ident=related_group_id)
+        if related_group is not None:
+            db_session.delete(related_group)
 
     db_session.commit()
-    logger.info(f"Unlinked {transaction} from flow {flow_id}")
+    logger.info(f"Unlinked {transaction} from related group {related_group_id}")
 
 
-def _resolve_target_flow(db_session: Session, transaction: Transaction, counterpart: Transaction) -> TransferFlow:
-    existing_ids = [leg.flow_id for leg in (transaction, counterpart) if leg.flow_id is not None]
+def _resolve_target_related_group(
+    db_session: Session, transaction: Transaction, counterpart: Transaction
+) -> RelatedGroup:
+    existing_ids = [leg.related_group_id for leg in (transaction, counterpart) if leg.related_group_id is not None]
     if not existing_ids:
-        flow = TransferFlow()
-        db_session.add(flow)
+        related_group = RelatedGroup()
+        db_session.add(related_group)
         db_session.flush()
-        return flow
-    # existing_ids come from persisted flow_ids, so these rows always exist (.one() raises otherwise)
-    target = db_session.scalars(select(TransferFlow).where(TransferFlow.id == existing_ids[0])).one()
+        return related_group
+    # existing_ids come from persisted related_group_ids, so these rows always exist (.one() raises otherwise)
+    target = db_session.scalars(select(RelatedGroup).where(RelatedGroup.id == existing_ids[0])).one()
     for other_id in existing_ids[1:]:
         if other_id != target.id:
-            source = db_session.scalars(select(TransferFlow).where(TransferFlow.id == other_id)).one()
-            _merge_flow(db_session=db_session, source=source, target=target)
+            source = db_session.scalars(select(RelatedGroup).where(RelatedGroup.id == other_id)).one()
+            _merge_related_group(db_session=db_session, source=source, target=target)
     return target
 
 
-def _merge_flow(db_session: Session, source: TransferFlow, target: TransferFlow) -> None:
+def _merge_related_group(db_session: Session, source: RelatedGroup, target: RelatedGroup) -> None:
     for member in list(source.transactions):
-        member.flow = target
+        member.related_group = target
     db_session.flush()
     db_session.delete(source)
 
 
-def _add_to_flow(leg: Transaction, flow: TransferFlow) -> None:
-    if leg.flow_id == flow.id:
+def _add_to_related_group(leg: Transaction, related_group: RelatedGroup) -> None:
+    if leg.related_group_id == related_group.id:
         return
     leg.transfer_original_type = leg.transaction_type
     leg.transaction_type = TransactionType.TRANSFER_OUT if leg.amount < 0 else TransactionType.TRANSFER_IN
-    leg.flow = flow
-    leg.flow_link_source = FlowLinkSource.MANUAL
+    leg.related_group = related_group
+    leg.related_link_source = RelatedLinkSource.MANUAL
     leg.transfer_relink_blocked = False
 
 
-def _detach_from_flow(leg: Transaction) -> None:
+def _detach_from_related_group(leg: Transaction) -> None:
     if leg.transfer_original_type is not None:
         leg.transaction_type = leg.transfer_original_type
     leg.transfer_original_type = None
-    leg.flow_id = None
-    leg.flow_link_source = None
+    leg.related_group_id = None
+    leg.related_link_source = None
     leg.transfer_relink_blocked = True
 
 
@@ -576,9 +580,9 @@ def get_filtered_transactions_for_user(
 
     if (linked := filter_parameters.get("linked")) is not None:
         if linked == "linked":
-            query = query.where(Transaction.flow_id.isnot(None))
+            query = query.where(Transaction.related_group_id.isnot(None))
         elif linked == "unlinked":
-            query = query.where(Transaction.flow_id.is_(None))
+            query = query.where(Transaction.related_group_id.is_(None))
         else:
             query = query.where(false())
 

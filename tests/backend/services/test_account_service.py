@@ -13,11 +13,11 @@ from source.backend.exceptions import (
 from source.backend.models.accounts.account import Account
 from source.backend.models.auth.user import User
 from source.backend.models.banking.credential import Credential
-from source.backend.models.transactions.flow_link_source import FlowLinkSource
+from source.backend.models.transactions.related_group import RelatedGroup
+from source.backend.models.transactions.related_link_source import RelatedLinkSource
 from source.backend.models.transactions.transaction import Transaction
 from source.backend.models.transactions.transaction_category import TransactionCategory
 from source.backend.models.transactions.transaction_type import TransactionType
-from source.backend.models.transactions.transfer_flow import TransferFlow
 from source.backend.services.accounts import account_service
 from tests.backend.conftest import (
     ACCOUNT_IBAN,
@@ -30,7 +30,7 @@ from tests.backend.conftest import (
     SECOND_USER_NAME,
     WALLET_ACCOUNT_NAME,
     assert_log_contains,
-    link_transactions_as_flow,
+    link_transactions_as_related_group,
     make_account,
     make_credential,
     make_transaction,
@@ -448,7 +448,7 @@ def test_filter_transactions(
         assert [t.id for t in filtered_transactions] == expected_ids
 
 
-def test_remove_from_flow_clears_both_sides_and_restores_types(
+def test_unlink_related_clears_both_sides_and_restores_types(
     session_factory: sessionmaker, caplog: pytest.LogCaptureFixture
 ):
     with session_factory() as session:
@@ -462,20 +462,20 @@ def test_remove_from_flow_clears_both_sides_and_restores_types(
         in_transaction = make_transaction(
             session, account_id=account_b.id, amount=AMOUNT, transaction_type=TransactionType.TRANSFER_IN
         )
-        link_transactions_as_flow(db_session=session, transactions=[out_transaction, in_transaction])
+        link_transactions_as_related_group(db_session=session, transactions=[out_transaction, in_transaction])
         out_transaction.transfer_original_type = TransactionType.OUTGOING
         in_transaction.transfer_original_type = TransactionType.DEPOSIT
         session.flush()
 
-        account_service.remove_from_flow(db_session=session, transaction=out_transaction)
+        account_service.unlink_related(db_session=session, transaction=out_transaction)
 
-        assert_log_contains(caplog, messages=["Unlinked <Transaction(", "from flow"])
-        assert out_transaction.flow_id is None
-        assert in_transaction.flow_id is None
+        assert_log_contains(caplog, messages=["Unlinked <Transaction(", "from related group"])
+        assert out_transaction.related_group_id is None
+        assert in_transaction.related_group_id is None
         assert out_transaction.transfer_relink_blocked is True
         assert in_transaction.transfer_relink_blocked is True
-        assert out_transaction.flow_link_source is None
-        assert in_transaction.flow_link_source is None
+        assert out_transaction.related_link_source is None
+        assert in_transaction.related_link_source is None
         assert out_transaction.transaction_type == TransactionType.OUTGOING
         assert in_transaction.transaction_type == TransactionType.DEPOSIT
         assert out_transaction.transfer_original_type is None
@@ -518,7 +518,7 @@ def test_get_transaction_for_account_rejects_unknown_and_foreign_transactions(
         assert_log_contains(caplog, messages=["Transaction with the ID 99999 not found", "does not belong to"])
 
 
-def test_add_to_flow_links_both_legs(session_factory: sessionmaker, caplog: pytest.LogCaptureFixture):
+def test_link_related_links_both_legs(session_factory: sessionmaker, caplog: pytest.LogCaptureFixture):
     with session_factory() as session:
         user = make_user(session)
         credential = make_credential(session, user_id=user.id, bank=BankProvider.FINTS)
@@ -532,15 +532,15 @@ def test_add_to_flow_links_both_legs(session_factory: sessionmaker, caplog: pyte
         )
         session.flush()
 
-        account_service.add_to_flow(db_session=session, transaction=out_transaction, counterpart=in_transaction)
+        account_service.link_related(db_session=session, transaction=out_transaction, counterpart=in_transaction)
 
-        assert_log_contains(caplog, messages=["Linked <Transaction(", "and <Transaction(", "into flow"])
-        assert out_transaction.flow_id is not None
-        assert out_transaction.flow_id == in_transaction.flow_id
+        assert_log_contains(caplog, messages=["Linked <Transaction(", "and <Transaction(", "into related group"])
+        assert out_transaction.related_group_id is not None
+        assert out_transaction.related_group_id == in_transaction.related_group_id
         assert out_transaction.transaction_type == TransactionType.TRANSFER_OUT
         assert in_transaction.transaction_type == TransactionType.TRANSFER_IN
-        assert out_transaction.flow_link_source == FlowLinkSource.MANUAL
-        assert in_transaction.flow_link_source == FlowLinkSource.MANUAL
+        assert out_transaction.related_link_source == RelatedLinkSource.MANUAL
+        assert in_transaction.related_link_source == RelatedLinkSource.MANUAL
 
 
 def test_manual_link_reauthorises_auto_detection_on_a_previously_unlinked_leg(session_factory: sessionmaker):
@@ -558,10 +558,10 @@ def test_manual_link_reauthorises_auto_detection_on_a_previously_unlinked_leg(se
         out_transaction.transfer_relink_blocked = True
         session.flush()
 
-        account_service.add_to_flow(db_session=session, transaction=out_transaction, counterpart=in_transaction)
+        account_service.link_related(db_session=session, transaction=out_transaction, counterpart=in_transaction)
 
         assert out_transaction.transfer_relink_blocked is False
-        assert out_transaction.flow_link_source == FlowLinkSource.MANUAL
+        assert out_transaction.related_link_source == RelatedLinkSource.MANUAL
 
 
 def _create_n_accounts(db_session: Session, user: User, count: int) -> list[Account]:
@@ -569,7 +569,7 @@ def _create_n_accounts(db_session: Session, user: User, count: int) -> list[Acco
     return [make_account(db_session, credential_id=credential.id, name=f"Account {index}") for index in range(count)]
 
 
-def test_add_to_flow_adds_a_third_transaction_to_an_existing_flow(session_factory: sessionmaker):
+def test_link_related_adds_a_third_transaction_to_an_existing_related_group(session_factory: sessionmaker):
     with session_factory() as session:
         user = make_user(session)
         account_a, account_b, account_c = _create_n_accounts(db_session=session, user=user, count=3)
@@ -584,16 +584,16 @@ def test_add_to_flow_adds_a_third_transaction_to_an_existing_flow(session_factor
         )
         session.flush()
 
-        account_service.add_to_flow(db_session=session, transaction=first, counterpart=second)
-        account_service.add_to_flow(db_session=session, transaction=second, counterpart=third)
+        account_service.link_related(db_session=session, transaction=first, counterpart=second)
+        account_service.link_related(db_session=session, transaction=second, counterpart=third)
 
-        assert first.flow_id is not None
-        assert {first.flow_id, second.flow_id, third.flow_id} == {first.flow_id}
+        assert first.related_group_id is not None
+        assert {first.related_group_id, second.related_group_id, third.related_group_id} == {first.related_group_id}
         assert third.transaction_type == TransactionType.TRANSFER_OUT
         assert third.transfer_original_type == TransactionType.BUY
 
 
-def test_add_to_flow_merges_two_existing_flows(session_factory: sessionmaker):
+def test_link_related_merges_two_existing_related_groups(session_factory: sessionmaker):
     with session_factory() as session:
         user = make_user(session)
         account_a, account_b, account_c, account_d = _create_n_accounts(db_session=session, user=user, count=4)
@@ -607,18 +607,18 @@ def test_add_to_flow_merges_two_existing_flows(session_factory: sessionmaker):
         d = make_transaction(session, account_id=account_d.id, amount=AMOUNT, transaction_type=TransactionType.DEPOSIT)
         session.flush()
 
-        account_service.add_to_flow(db_session=session, transaction=a, counterpart=b)
-        account_service.add_to_flow(db_session=session, transaction=c, counterpart=d)
-        first_flow, second_flow = a.flow_id, c.flow_id
-        assert first_flow != second_flow
+        account_service.link_related(db_session=session, transaction=a, counterpart=b)
+        account_service.link_related(db_session=session, transaction=c, counterpart=d)
+        first_related_group, second_related_group = a.related_group_id, c.related_group_id
+        assert first_related_group != second_related_group
 
-        account_service.add_to_flow(db_session=session, transaction=b, counterpart=c)
+        account_service.link_related(db_session=session, transaction=b, counterpart=c)
 
-        assert {a.flow_id, b.flow_id, c.flow_id, d.flow_id} == {a.flow_id}
-        assert session.get(entity=TransferFlow, ident=second_flow) is None
+        assert {a.related_group_id, b.related_group_id, c.related_group_id, d.related_group_id} == {a.related_group_id}
+        assert session.get(entity=RelatedGroup, ident=second_related_group) is None
 
 
-def test_unlinking_one_member_keeps_a_flow_with_more_than_two(session_factory: sessionmaker):
+def test_unlinking_one_member_keeps_a_related_group_with_more_than_two(session_factory: sessionmaker):
     with session_factory() as session:
         user = make_user(session)
         account_a, account_b, account_c = _create_n_accounts(db_session=session, user=user, count=3)
@@ -632,20 +632,20 @@ def test_unlinking_one_member_keeps_a_flow_with_more_than_two(session_factory: s
             session, account_id=account_c.id, amount=AMOUNT * -1, transaction_type=TransactionType.OUTGOING
         )
         session.flush()
-        account_service.add_to_flow(db_session=session, transaction=first, counterpart=second)
-        account_service.add_to_flow(db_session=session, transaction=second, counterpart=third)
-        flow_id = first.flow_id
+        account_service.link_related(db_session=session, transaction=first, counterpart=second)
+        account_service.link_related(db_session=session, transaction=second, counterpart=third)
+        related_group_id = first.related_group_id
 
-        account_service.remove_from_flow(db_session=session, transaction=third)
+        account_service.unlink_related(db_session=session, transaction=third)
 
-        assert third.flow_id is None
+        assert third.related_group_id is None
         assert third.transfer_relink_blocked is True
-        assert first.flow_id == flow_id
-        assert second.flow_id == flow_id
-        assert session.get(entity=TransferFlow, ident=flow_id) is not None
+        assert first.related_group_id == related_group_id
+        assert second.related_group_id == related_group_id
+        assert session.get(entity=RelatedGroup, ident=related_group_id) is not None
 
 
-def test_flow_orders_members_by_date_then_amount(session_factory: sessionmaker):
+def test_related_group_orders_members_by_date_then_amount(session_factory: sessionmaker):
     # The real-world Christel -> invest -> deposit -> Sparplan chain (transactions 6991/7088/7097/7099).
     with session_factory() as session:
         user = make_user(session)
@@ -664,12 +664,12 @@ def test_flow_orders_members_by_date_then_amount(session_factory: sessionmaker):
         )
         session.flush()
 
-        account_service.add_to_flow(db_session=session, transaction=incoming, counterpart=invest_out)
-        account_service.add_to_flow(db_session=session, transaction=invest_out, counterpart=deposit_in)
-        account_service.add_to_flow(db_session=session, transaction=deposit_in, counterpart=buy_out)
+        account_service.link_related(db_session=session, transaction=incoming, counterpart=invest_out)
+        account_service.link_related(db_session=session, transaction=invest_out, counterpart=deposit_in)
+        account_service.link_related(db_session=session, transaction=deposit_in, counterpart=buy_out)
 
-        flow = session.get(entity=TransferFlow, ident=incoming.flow_id)
-        assert [member.id for member in flow.transactions] == [
+        related_group = session.get(entity=RelatedGroup, ident=incoming.related_group_id)
+        assert [member.id for member in related_group.transactions] == [
             incoming.id,
             invest_out.id,
             deposit_in.id,
@@ -677,7 +677,7 @@ def test_flow_orders_members_by_date_then_amount(session_factory: sessionmaker):
         ]
 
 
-def test_add_to_flow_rejects_two_members_of_the_same_flow(session_factory: sessionmaker):
+def test_link_related_rejects_two_members_of_the_same_related_group(session_factory: sessionmaker):
     with session_factory() as session:
         user = make_user(session)
         account_a, account_b = _create_n_accounts(db_session=session, user=user, count=2)
@@ -688,7 +688,7 @@ def test_add_to_flow_rejects_two_members_of_the_same_flow(session_factory: sessi
             session, account_id=account_b.id, amount=AMOUNT, transaction_type=TransactionType.DEPOSIT
         )
         session.flush()
-        account_service.add_to_flow(db_session=session, transaction=first, counterpart=second)
+        account_service.link_related(db_session=session, transaction=first, counterpart=second)
 
-        with pytest.raises(ConflictError, match="same flow"):
-            account_service.add_to_flow(db_session=session, transaction=first, counterpart=second)
+        with pytest.raises(ConflictError, match="same related group"):
+            account_service.link_related(db_session=session, transaction=first, counterpart=second)

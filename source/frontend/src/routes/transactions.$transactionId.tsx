@@ -9,11 +9,11 @@ import type { TransactionDetailRead, TransactionRead } from '@/lib/accountHistor
 import { findAccountInUser } from '@/lib/accountHistory'
 import { formatDate, formatMoney } from '@/lib/format'
 import {
-  useLinkTransfer,
+  useLinkRelated,
   useTransaction,
   useTransactionById,
   useUpdateTransaction,
-  useUnlinkTransfer,
+  useUnlinkRelated,
   type TransactionCategory,
 } from '@/lib/transaction'
 import { useAuthMe } from '@/lib/auth'
@@ -52,7 +52,7 @@ function TransactionDetailPage() {
   const query = useTransactionById(transactionId)
   const accountId = query.data?.account_id ?? 0
   const update = useUpdateTransaction(accountId, transactionId)
-  const unlink = useUnlinkTransfer()
+  const unlink = useUnlinkRelated()
   const { data: user } = useAuthMe()
 
   if (query.isLoading) return null
@@ -65,11 +65,11 @@ function TransactionDetailPage() {
   const account = found?.account
   const accountName = account ? account.display_name?.trim() || account.name : null
 
-  const toFlowMember = (
+  const toRelatedTransaction = (
     transaction: TransactionRead,
     resolved: ReturnType<typeof findAccountInUser>,
     isCurrent: boolean,
-  ): FlowMemberView => {
+  ): RelatedTransactionView => {
     const resolvedAccount = resolved?.account ?? null
     return {
       transaction,
@@ -84,14 +84,14 @@ function TransactionDetailPage() {
     }
   }
 
-  const flowMembers: FlowMemberView[] =
-    query.data.flow_members.length > 0
+  const relatedTransactions: RelatedTransactionView[] =
+    query.data.related_transactions.length > 0
       ? [
-          toFlowMember(query.data, found, true),
-          ...query.data.flow_members.map((member) =>
-            toFlowMember(member, findAccountInUser(user, member.account_id), false),
+          toRelatedTransaction(query.data, found, true),
+          ...query.data.related_transactions.map((member) =>
+            toRelatedTransaction(member, findAccountInUser(user, member.account_id), false),
           ),
-        ].sort(compareFlowMembers)
+        ].sort(compareRelatedTransactions)
       : []
 
   const linkSource =
@@ -110,7 +110,7 @@ function TransactionDetailPage() {
       accountName={accountName}
       bankName={found?.bankName ?? null}
       bankIcon={found?.bankIcon ?? null}
-      flowMembers={flowMembers}
+      relatedTransactions={relatedTransactions}
       linking={linkSource !== null}
       canWrite={canWrite}
       canUnlink={isOwner}
@@ -179,7 +179,7 @@ function LinkConfirmSection({
   const navigate = useNavigate()
   const { data: user } = useAuthMe()
   const sourceQuery = useTransaction(source.accountId, source.transactionId)
-  const link = useLinkTransfer(source.accountId, source.transactionId)
+  const link = useLinkRelated(source.accountId, source.transactionId)
 
   const sourceTransaction = sourceQuery.data
   if (!sourceTransaction) return null
@@ -373,7 +373,7 @@ function TransactionNotFoundView() {
   )
 }
 
-export interface FlowMemberView {
+export interface RelatedTransactionView {
   transaction: TransactionRead
   accountName: string | null
   bankName: string | null
@@ -383,14 +383,17 @@ export interface FlowMemberView {
   isAccessible: boolean
 }
 
-// Order a flow the way the money travels: by date, then non-depot accounts before the market-valued depot
+// Order a group the way the money travels: by date, then non-depot accounts before the market-valued depot
 // (the terminal asset side), then a sign rule, then id. So a broker buy reads deposit-in -> cash-out ->
 // depot-in. The sign rule only applies across accounts: the two legs of a single transfer live on different
 // accounts, so the source outflow precedes the destination inflow (out first). Within one account the legs
 // arrive in provider order, so id (ascending = booking order) decides — e.g. a debit before its later
 // reversal, even though the reversal is an inflow.
-export function compareFlowMembers(a: FlowMemberView, b: FlowMemberView): number {
-  const outLast = (m: FlowMemberView) => (m.transaction.amount < 0 ? 1 : 0)
+export function compareRelatedTransactions(
+  a: RelatedTransactionView,
+  b: RelatedTransactionView,
+): number {
+  const outLast = (m: RelatedTransactionView) => (m.transaction.amount < 0 ? 1 : 0)
   const sameAccount = a.transaction.account_id === b.transaction.account_id
   const signRank = sameAccount ? 0 : outLast(b) - outLast(a)
   return (
@@ -407,7 +410,7 @@ export interface TransactionDetailViewProps {
   accountName?: string | null
   bankName?: string | null
   bankIcon?: string | null
-  flowMembers: FlowMemberView[]
+  relatedTransactions: RelatedTransactionView[]
   linking?: boolean
   canWrite?: boolean
   canUnlink?: boolean

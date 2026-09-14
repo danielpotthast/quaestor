@@ -131,17 +131,17 @@ export function useDeleteTransaction(accountId: number) {
   })
 }
 
-export interface TransferLinkPayload {
+export interface RelatedLinkPayload {
   counterpartAccountId: number
   counterpartTransactionId: number
 }
 
-export function useLinkTransfer(accountId: number, transactionId: number) {
+export function useLinkRelated(accountId: number, transactionId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ counterpartAccountId, counterpartTransactionId }: TransferLinkPayload) =>
+    mutationFn: ({ counterpartAccountId, counterpartTransactionId }: RelatedLinkPayload) =>
       api<TransactionDetailRead>(
-        `/account/${accountId}/transactions/${transactionId}/transfer-link`,
+        `/account/${accountId}/transactions/${transactionId}/related-link`,
         {
           method: 'PUT',
           body: {
@@ -159,11 +159,11 @@ export function useLinkTransfer(accountId: number, transactionId: number) {
   })
 }
 
-export function useUnlinkTransfer() {
+export function useUnlinkRelated() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ accountId, transactionId }: { accountId: number; transactionId: number }) =>
-      api<void>(`/account/${accountId}/transactions/${transactionId}/transfer-link`, {
+      api<void>(`/account/${accountId}/transactions/${transactionId}/related-link`, {
         method: 'DELETE',
       }),
     onSuccess: (_data, { accountId, transactionId }) => {

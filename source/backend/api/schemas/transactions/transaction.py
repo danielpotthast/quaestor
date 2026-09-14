@@ -47,7 +47,7 @@ class TransactionRead(BaseModel):
 
 
 class TransactionDetailRead(TransactionRead):
-    flow_members: list[TransactionRead] = Field(default_factory=list)
+    related_transactions: list[TransactionRead] = Field(default_factory=list)
 
 
 class TransactionUpdate(BaseModel):
@@ -70,7 +70,7 @@ class TransactionCreate(BaseModel):
     note: str | None = None
 
 
-class TransferLinkCreate(BaseModel):
+class RelatedLinkCreate(BaseModel):
     counterpart_account_id: int
     counterpart_transaction_id: int
 

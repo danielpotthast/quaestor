@@ -33,11 +33,11 @@ from source.backend.models.base import Base
 from source.backend.models.contracts.contract import Contract
 from source.backend.models.contracts.contract_frequency import ContractFrequency
 from source.backend.models.contracts.contract_source import ContractSource
-from source.backend.models.transactions.flow_link_source import FlowLinkSource
+from source.backend.models.transactions.related_group import RelatedGroup
+from source.backend.models.transactions.related_link_source import RelatedLinkSource
 from source.backend.models.transactions.transaction import Transaction
 from source.backend.models.transactions.transaction_category import TransactionCategory
 from source.backend.models.transactions.transaction_type import TransactionType
-from source.backend.models.transactions.transfer_flow import TransferFlow
 from source.backend.security import csrf, rate_limit
 from source.backend.services.banking import bank_catalog, enable_banking_catalog
 from source.backend.services.core import i18n_service
@@ -441,15 +441,15 @@ def make_transaction(
     return transaction
 
 
-def link_transactions_as_flow(db_session: Session, transactions: list[Transaction]) -> TransferFlow:
-    flow = TransferFlow()
-    db_session.add(flow)
+def link_transactions_as_related_group(db_session: Session, transactions: list[Transaction]) -> RelatedGroup:
+    related_group = RelatedGroup()
+    db_session.add(related_group)
     db_session.flush()
     for transaction in transactions:
-        transaction.flow_id = flow.id
-        transaction.flow_link_source = FlowLinkSource.DETECTED
+        transaction.related_group_id = related_group.id
+        transaction.related_link_source = RelatedLinkSource.DETECTED
     db_session.flush()
-    return flow
+    return related_group
 
 
 def make_contract(

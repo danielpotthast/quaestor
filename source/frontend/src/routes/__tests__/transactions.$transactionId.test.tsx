@@ -13,7 +13,10 @@ import {
   otherPartyLabelKey,
   transferPartnerLabel,
 } from '@/pages/transactions.$transactionId'
-import { compareFlowMembers, type FlowMemberView } from '@/routes/transactions.$transactionId'
+import {
+  compareRelatedTransactions,
+  type RelatedTransactionView,
+} from '@/routes/transactions.$transactionId'
 import {
   ACCOUNT_NAME_GIRO,
   ACCOUNT_NAME_SAVINGS,
@@ -40,12 +43,12 @@ function buildTransaction(overrides: Partial<TransactionDetailRead> = {}): Trans
     transaction_type: 'OUTGOING',
     category: 'SUPERMARKET',
     note: null,
-    flow_members: [],
+    related_transactions: [],
     ...overrides,
   }
 }
 
-function flowMemberOf(
+function relatedTransactionOf(
   transaction: TransactionRead,
   accountName: string | null = ACCOUNT_NAME_SAVINGS,
   isCurrent = false,
@@ -70,18 +73,18 @@ function renderView(
   const onChangeCategory = vi.fn().mockResolvedValue(undefined)
   const onUnlink = vi.fn().mockResolvedValue(undefined)
   const transaction = buildTransaction(overrides)
-  const flowMembers =
-    transaction.flow_members.length > 0
+  const relatedTransactions =
+    transaction.related_transactions.length > 0
       ? [
-          flowMemberOf(transaction, ACCOUNT_NAME_GIRO, true),
-          ...transaction.flow_members.map((m) => flowMemberOf(m)),
+          relatedTransactionOf(transaction, ACCOUNT_NAME_GIRO, true),
+          ...transaction.related_transactions.map((m) => relatedTransactionOf(m)),
         ]
       : []
   render(
     <TransactionDetailView
       accountId={42}
       transaction={transaction}
-      flowMembers={flowMembers}
+      relatedTransactions={relatedTransactions}
       onSaveNote={onSaveNote}
       onChangeCategory={onChangeCategory}
       onUnlink={onUnlink}
@@ -200,27 +203,27 @@ describe('TransactionDetailView', () => {
     note: null,
   }
 
-  it('does not render the money-flow field when the flow is empty', () => {
-    renderView({ flow_members: [] })
-    expect(screen.queryByText('Money flow')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Remove from money flow' })).not.toBeInTheDocument()
+  it('does not render the related transactions field when the group is empty', () => {
+    renderView({ related_transactions: [] })
+    expect(screen.queryByText('Related transactions')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Remove link' })).not.toBeInTheDocument()
   })
 
-  it('renders each flow member linking to its transaction detail page', () => {
-    renderView({ flow_members: [memberTransaction] })
+  it('renders each related transaction linking to its transaction detail page', () => {
+    renderView({ related_transactions: [memberTransaction] })
     const link = screen.getByRole('link', { name: new RegExp(ACCOUNT_NAME_SAVINGS) })
     expect(link).toHaveAttribute('href', '/transactions/99')
   })
 
-  it('renders a flow member we cannot open as plain text instead of a link', () => {
-    const transaction = buildTransaction({ flow_members: [memberTransaction] })
+  it('renders a related transaction we cannot open as plain text instead of a link', () => {
+    const transaction = buildTransaction({ related_transactions: [memberTransaction] })
     render(
       <TransactionDetailView
         accountId={42}
         transaction={transaction}
-        flowMembers={[
-          flowMemberOf(transaction, ACCOUNT_NAME_GIRO, true),
-          flowMemberOf(memberTransaction, null, false, false),
+        relatedTransactions={[
+          relatedTransactionOf(transaction, ACCOUNT_NAME_GIRO, true),
+          relatedTransactionOf(memberTransaction, null, false, false),
         ]}
         onSaveNote={vi.fn()}
         onChangeCategory={vi.fn()}
@@ -235,53 +238,57 @@ describe('TransactionDetailView', () => {
     ).toBe(false)
   })
 
-  it('offers an unlink control next to every flow member', () => {
-    renderView({ flow_members: [memberTransaction] })
-    expect(screen.getAllByRole('button', { name: 'Remove from money flow' })).toHaveLength(2)
+  it('offers an unlink control next to every related transaction', () => {
+    renderView({ related_transactions: [memberTransaction] })
+    expect(screen.getAllByRole('button', { name: 'Remove link' })).toHaveLength(2)
   })
 
-  it('asks for confirmation and removes the addressed member from the flow', async () => {
+  it('asks for confirmation and removes the addressed member from the group', async () => {
     const user = userEvent.setup()
-    const { onUnlink } = renderView({ flow_members: [memberTransaction] })
+    const { onUnlink } = renderView({ related_transactions: [memberTransaction] })
     const row = screen.getByRole('link', { name: new RegExp(ACCOUNT_NAME_SAVINGS) }).closest('li')!
-    await user.click(within(row).getByRole('button', { name: 'Remove from money flow' }))
+    await user.click(within(row).getByRole('button', { name: 'Remove link' }))
     expect(onUnlink).not.toHaveBeenCalled()
-    await user.click(within(row).getByRole('button', { name: 'Remove from money flow' }))
+    await user.click(within(row).getByRole('button', { name: 'Remove link' }))
     expect(onUnlink).toHaveBeenCalledWith(memberTransaction)
   })
 
   it('does not remove when the confirmation is cancelled', async () => {
     const user = userEvent.setup()
-    const { onUnlink } = renderView({ flow_members: [memberTransaction] })
+    const { onUnlink } = renderView({ related_transactions: [memberTransaction] })
     const row = screen.getByRole('link', { name: new RegExp(ACCOUNT_NAME_SAVINGS) }).closest('li')!
-    await user.click(within(row).getByRole('button', { name: 'Remove from money flow' }))
+    await user.click(within(row).getByRole('button', { name: 'Remove link' }))
     await user.click(within(row).getByRole('button', { name: 'Cancel' }))
     expect(onUnlink).not.toHaveBeenCalled()
   })
 
-  it('hides the remove control while a link flow is in progress', () => {
-    renderView({ flow_members: [memberTransaction] }, { linking: true })
-    expect(screen.queryByRole('button', { name: 'Remove from money flow' })).toBeNull()
-    expect(screen.getByText('Money flow')).toBeInTheDocument()
+  it('hides the remove control while linking is in progress', () => {
+    renderView({ related_transactions: [memberTransaction] }, { linking: true })
+    expect(screen.queryByRole('button', { name: 'Remove link' })).toBeNull()
+    expect(screen.getByText('Related transactions')).toBeInTheDocument()
   })
 
-  it('labels a flow member with its account name and shows the other party / purpose below', () => {
+  it('labels a related transaction with its account name and shows the other party / purpose below', () => {
     renderView({
-      flow_members: [{ ...memberTransaction, other_party: 'ACME Corp', purpose: 'Invoice 42' }],
+      related_transactions: [
+        { ...memberTransaction, other_party: 'ACME Corp', purpose: 'Invoice 42' },
+      ],
     })
     expect(screen.getByRole('link', { name: new RegExp(ACCOUNT_NAME_SAVINGS) })).toBeInTheDocument()
     expect(screen.getByText('ACME Corp · Invoice 42')).toBeInTheDocument()
   })
 
   it('omits the details line when a member has no other party or purpose', () => {
-    renderView({ flow_members: [{ ...memberTransaction, other_party: null, purpose: null }] })
+    renderView({
+      related_transactions: [{ ...memberTransaction, other_party: null, purpose: null }],
+    })
     const row = screen.getByRole('link', { name: new RegExp(ACCOUNT_NAME_SAVINGS) }).closest('li')!
     expect(within(row).queryByText(/·/)).toBeNull()
   })
 
-  it('renders all flow members when there are more than one', () => {
+  it('renders all related transactions when there are more than one', () => {
     const second: TransactionRead = { ...memberTransaction, id: 100, account_id: 56 }
-    renderView({ flow_members: [memberTransaction, second] })
+    renderView({ related_transactions: [memberTransaction, second] })
     const links = screen.getAllByRole('link', { name: new RegExp(ACCOUNT_NAME_SAVINGS) })
     expect(links).toHaveLength(2)
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
@@ -290,14 +297,14 @@ describe('TransactionDetailView', () => {
     ])
   })
 
-  it('shows the current transaction in the flow highlighted and without a link', () => {
+  it('shows the current transaction in the group highlighted and without a link', () => {
     const current: TransactionRead = { ...memberTransaction, id: 7, account_id: 42 }
     renderView(
-      { flow_members: [memberTransaction] },
+      { related_transactions: [memberTransaction] },
       {
-        flowMembers: [
-          flowMemberOf(current, ACCOUNT_NAME_GIRO, true),
-          flowMemberOf(memberTransaction),
+        relatedTransactions: [
+          relatedTransactionOf(current, ACCOUNT_NAME_GIRO, true),
+          relatedTransactionOf(memberTransaction),
         ],
       },
     )
@@ -306,15 +313,18 @@ describe('TransactionDetailView', () => {
     expect(screen.getByRole('link', { name: new RegExp(ACCOUNT_NAME_SAVINGS) })).toBeInTheDocument()
   })
 
-  it('renders the linkSection slot when the flow is empty', () => {
-    renderView({ flow_members: [] }, { linkSection: <div>start-link-slot</div> })
+  it('renders the linkSection slot when the group is empty', () => {
+    renderView({ related_transactions: [] }, { linkSection: <div>start-link-slot</div> })
     expect(screen.getByText('start-link-slot')).toBeInTheDocument()
   })
 
-  it('still renders the linkSection alongside an existing flow (so more can be added)', () => {
-    renderView({ flow_members: [memberTransaction] }, { linkSection: <div>start-link-slot</div> })
+  it('still renders the linkSection alongside an existing group (so more can be added)', () => {
+    renderView(
+      { related_transactions: [memberTransaction] },
+      { linkSection: <div>start-link-slot</div> },
+    )
     expect(screen.getByText('start-link-slot')).toBeInTheDocument()
-    expect(screen.getByText('Money flow')).toBeInTheDocument()
+    expect(screen.getByText('Related transactions')).toBeInTheDocument()
   })
 
   it('renders the linkConfirmSection slot', () => {
@@ -322,14 +332,14 @@ describe('TransactionDetailView', () => {
     expect(screen.getByText('confirm-link-slot')).toBeInTheDocument()
   })
 
-  it('renders the money-flow field above the note', () => {
-    renderView({ flow_members: [memberTransaction] })
+  it('renders the related transactions field above the note', () => {
+    renderView({ related_transactions: [memberTransaction] })
     const terms = screen.getAllByRole('term').map((node) => node.textContent)
     expect(terms).toEqual([
       'Recipient',
       'PurposePurpose',
       'Category',
-      'Money flow',
+      'Related transactions',
       'Account',
       'Note',
     ])
@@ -426,14 +436,14 @@ describe('TransactionDetailView — note auto-save', () => {
   })
 })
 
-describe('compareFlowMembers', () => {
-  const flowMember = (over: {
+describe('compareRelatedTransactions', () => {
+  const relatedTransaction = (over: {
     id: number
     date: string
     amount: number
     accountId?: number
     isMarketValued?: boolean
-  }): FlowMemberView => ({
+  }): RelatedTransactionView => ({
     transaction: buildTransaction({
       id: over.id,
       date: over.date,
@@ -449,45 +459,55 @@ describe('compareFlowMembers', () => {
   })
 
   it('orders a broker purchase the way the money travels', () => {
-    const personalOut = flowMember({ id: 4750, date: '2026-07-14', amount: -AMOUNT_XL })
-    const cashIn = flowMember({ id: 5145, date: DATE_BROKER_SETTLE, amount: AMOUNT_XL })
-    const cashOut = flowMember({ id: 5146, date: DATE_BROKER_SETTLE, amount: -AMOUNT_XL })
-    const depotIn = flowMember({
+    const personalOut = relatedTransaction({ id: 4750, date: '2026-07-14', amount: -AMOUNT_XL })
+    const cashIn = relatedTransaction({ id: 5145, date: DATE_BROKER_SETTLE, amount: AMOUNT_XL })
+    const cashOut = relatedTransaction({ id: 5146, date: DATE_BROKER_SETTLE, amount: -AMOUNT_XL })
+    const depotIn = relatedTransaction({
       id: 5147,
       date: DATE_BROKER_SETTLE,
       amount: AMOUNT_XL,
       isMarketValued: true,
     })
 
-    const ordered = [depotIn, cashOut, personalOut, cashIn].sort(compareFlowMembers)
+    const ordered = [depotIn, cashOut, personalOut, cashIn].sort(compareRelatedTransactions)
 
     expect(ordered.map((m) => m.transaction.id)).toEqual([4750, 5145, 5146, 5147])
   })
 
   it('shows a same-date transfer as departure before arrival', () => {
-    const personalOut = flowMember({
+    const personalOut = relatedTransaction({
       id: 2,
       date: DATE_SAME_DAY_TRANSFER,
       amount: -AMOUNT_XL,
       accountId: 24,
     })
-    const cashIn = flowMember({
+    const cashIn = relatedTransaction({
       id: 1,
       date: DATE_SAME_DAY_TRANSFER,
       amount: AMOUNT_XL,
       accountId: 20,
     })
 
-    const ordered = [cashIn, personalOut].sort(compareFlowMembers)
+    const ordered = [cashIn, personalOut].sort(compareRelatedTransactions)
 
     expect(ordered.map((m) => m.transaction.id)).toEqual([2, 1])
   })
 
   it('orders same-account legs in booking order, debit before its later reversal', () => {
-    const debit = flowMember({ id: 5054, date: '2026-07-16', amount: -AMOUNT_XL, accountId: 24 })
-    const reversal = flowMember({ id: 5109, date: '2026-07-16', amount: AMOUNT_XL, accountId: 24 })
+    const debit = relatedTransaction({
+      id: 5054,
+      date: '2026-07-16',
+      amount: -AMOUNT_XL,
+      accountId: 24,
+    })
+    const reversal = relatedTransaction({
+      id: 5109,
+      date: '2026-07-16',
+      amount: AMOUNT_XL,
+      accountId: 24,
+    })
 
-    const ordered = [reversal, debit].sort(compareFlowMembers)
+    const ordered = [reversal, debit].sort(compareRelatedTransactions)
 
     expect(ordered.map((m) => m.transaction.id)).toEqual([5054, 5109])
   })

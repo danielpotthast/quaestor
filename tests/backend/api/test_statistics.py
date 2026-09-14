@@ -18,7 +18,7 @@ from tests.backend.conftest import (
     THIRD_AMOUNT,
     assert_log_contains,
     create_credential,
-    link_transactions_as_flow,
+    link_transactions_as_related_group,
     make_transaction,
     persist_account,
     persist_transaction,
@@ -123,7 +123,7 @@ def test_categories_hide_net_zero_transfers(http_client: TestClient, session_fac
             session, account_id=account_id, amount=DEFAULT_AMOUNT, category=TransactionCategory.SAVINGS
         )
         session.flush()
-        link_transactions_as_flow(db_session=session, transactions=[out, back])
+        link_transactions_as_related_group(db_session=session, transactions=[out, back])
         make_transaction(
             session,
             account_id=account_id,
@@ -207,7 +207,7 @@ def test_categories_filter_by_multiple_transaction_types(http_client: TestClient
     ]
 
 
-def test_categories_hide_net_zero_flows_but_keep_flows_with_net_effect(
+def test_categories_hide_net_zero_related_groups_but_keep_related_groups_with_net_effect(
     http_client: TestClient, session_factory: sessionmaker
 ):
     account_id = setup_account(http_client=http_client, session_factory=session_factory)
@@ -228,8 +228,10 @@ def test_categories_hide_net_zero_flows_but_keep_flows_with_net_effect(
             session, account_id=account_id, amount=-DEFAULT_AMOUNT, category=TransactionCategory.FEES
         )
         session.flush()
-        link_transactions_as_flow(db_session=session, transactions=[transfer_out, transfer_in])
-        link_transactions_as_flow(db_session=session, transactions=[returned_payment, reimbursement, successful_retry])
+        link_transactions_as_related_group(db_session=session, transactions=[transfer_out, transfer_in])
+        link_transactions_as_related_group(
+            db_session=session, transactions=[returned_payment, reimbursement, successful_retry]
+        )
         session.commit()
 
     response = http_client.get("/api/statistics/categories", params=[("account_ids", account_id)])

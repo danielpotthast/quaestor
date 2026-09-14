@@ -29,7 +29,7 @@ from source.backend.models.transactions.transaction import Transaction
 from source.backend.models.transactions.transaction_category import TransactionCategory
 from source.backend.models.transactions.transaction_type import TransactionType
 from source.backend.services.accounts import account_service
-from source.backend.services.transactions import flow_refunds
+from source.backend.services.transactions import related_refunds
 
 logger = get_logger(__name__)
 
@@ -64,7 +64,7 @@ def _base_conditions(
         Transaction.pending.is_(False),
         Transaction.expected.is_(False),
     ]
-    hidden = flow_refunds.analyze(db_session=db_session).hidden_ids
+    hidden = related_refunds.analyze(db_session=db_session).hidden_ids
     if hidden:
         conditions.append(Transaction.id.notin_(hidden))
     if date_from is not None:

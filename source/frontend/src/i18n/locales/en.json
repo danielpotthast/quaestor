@@ -616,10 +616,10 @@
     "refundBadge": "Refund",
     "pendingHint": "Pending — not finally booked yet and may still change",
     "notFound": "The transaction you seek, this is not.",
-    "flow": "Money flow",
+    "related": "Related transactions",
     "incoming": "Incoming",
     "outgoing": "Outgoing",
-    "removeFromFlow": "Remove from money flow",
+    "removeFromRelated": "Remove link",
     "unlinkFailed": "Could not remove the link",
     "categoryUpdateFailed": "Could not update the category",
     "linkedAccountUnknown": "Other account",
@@ -639,15 +639,15 @@
     "rejectedSizeGeneric": "File too large"
   },
   "filters": {
-    "transferLabel": "$t(transaction.flow)",
+    "relatedLabel": "$t(transaction.related)",
     "attachmentLabel": "Attachment",
     "attachment": {
       "with": "With attachment",
       "without": "Without attachment"
     },
-    "transfer": {
-      "linked": "Part of a money flow",
-      "unlinked": "Not part of a money flow"
+    "related": {
+      "linked": "Linked",
+      "unlinked": "Not linked"
     },
     "dateFrom": "From date",
     "dateTo": "To date",

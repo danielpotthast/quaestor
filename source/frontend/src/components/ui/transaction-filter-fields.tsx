@@ -7,7 +7,7 @@ import { TypeMultiSelect } from '@/components/ui/type-multi-select'
 import { ScalarMultiSelect } from '@/components/ui/two-option-multi-select'
 import type { TransactionCategory, TransactionType } from '@/lib/transaction'
 
-export type TransferFilter = 'linked' | 'unlinked' | 'none'
+export type RelatedFilter = 'linked' | 'unlinked' | 'none'
 export type AttachmentFilter = 'with' | 'without' | 'none'
 
 const iconClass = 'text-muted-foreground size-4 shrink-0'
@@ -17,8 +17,8 @@ export interface TransactionFilterFieldsProps {
   onCategoriesChange: (next: TransactionCategory[]) => void
   selectedTypes: TransactionType[]
   onTypesChange: (next: TransactionType[]) => void
-  transfer?: TransferFilter | undefined
-  onTransferChange?: (next: TransferFilter | undefined) => void
+  related?: RelatedFilter | undefined
+  onRelatedChange?: (next: RelatedFilter | undefined) => void
   attachment?: AttachmentFilter | undefined
   onAttachmentChange?: (next: AttachmentFilter | undefined) => void
   idPrefix?: string
@@ -29,8 +29,8 @@ export function TransactionFilterFields({
   onCategoriesChange,
   selectedTypes,
   onTypesChange,
-  transfer,
-  onTransferChange,
+  related,
+  onRelatedChange,
   attachment,
   onAttachmentChange,
   idPrefix = 'filter',
@@ -38,10 +38,10 @@ export function TransactionFilterFields({
   const { t } = useTranslation()
   const categoriesId = `${idPrefix}-categories`
   const typeId = `${idPrefix}-type`
-  const transferId = `${idPrefix}-transfer`
+  const relatedId = `${idPrefix}-related`
   const attachmentId = `${idPrefix}-attachment`
 
-  const fieldCount = 2 + (onTransferChange ? 1 : 0) + (onAttachmentChange ? 1 : 0)
+  const fieldCount = 2 + (onRelatedChange ? 1 : 0) + (onAttachmentChange ? 1 : 0)
   const columns = fieldCount === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
 
   return (
@@ -58,27 +58,27 @@ export function TransactionFilterFields({
         <Label htmlFor={typeId}>{t('common.type')}</Label>
         <TypeMultiSelect id={typeId} selected={selectedTypes} onChange={onTypesChange} />
       </div>
-      {onTransferChange ? (
+      {onRelatedChange ? (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={transferId}>{t('filters.transferLabel')}</Label>
+          <Label htmlFor={relatedId}>{t('filters.relatedLabel')}</Label>
           <ScalarMultiSelect
-            id={transferId}
-            ariaLabel={t('filters.transferLabel')}
+            id={relatedId}
+            ariaLabel={t('filters.relatedLabel')}
             options={[
               {
                 value: 'linked',
-                label: t('filters.transfer.linked'),
+                label: t('filters.related.linked'),
                 leading: <ArrowLeftRight className={iconClass} aria-hidden="true" />,
               },
               {
                 value: 'unlinked',
-                label: t('filters.transfer.unlinked'),
+                label: t('filters.related.unlinked'),
                 leading: <Unlink className={iconClass} aria-hidden="true" />,
               },
             ]}
-            value={transfer}
-            onChange={onTransferChange}
-            checkboxIdPrefix="transfer"
+            value={related}
+            onChange={onRelatedChange}
+            checkboxIdPrefix="related"
           />
         </div>
       ) : null}

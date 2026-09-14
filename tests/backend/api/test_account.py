@@ -21,7 +21,7 @@ from tests.backend.conftest import (
     WALLET_ACCOUNT_NAME,
     create_credential,
     create_manual_credential,
-    link_transactions_as_flow,
+    link_transactions_as_related_group,
     persist_account,
     persist_transaction,
     register,
@@ -756,7 +756,7 @@ def test_update_transaction_still_accepts_note_on_non_manual_account(
     assert response.json()["note"] == "Still works"
 
 
-def test_transaction_detail_read_defaults_flow_members_to_empty():
+def test_transaction_detail_read_defaults_related_transactions_to_empty():
     schema = TransactionDetailRead(
         id=1,
         account_id=1,
@@ -770,10 +770,10 @@ def test_transaction_detail_read_defaults_flow_members_to_empty():
         pending=False,
     )
 
-    assert schema.flow_members == []
+    assert schema.related_transactions == []
 
 
-def test_get_transaction_includes_flow_members(http_client: TestClient, session_factory: sessionmaker):
+def test_get_transaction_includes_related_transactions(http_client: TestClient, session_factory: sessionmaker):
     register(http_client)
     credential_id = create_credential(http_client).json()["id"]
     account_a = persist_account(session_factory=session_factory, credential_id=credential_id)
@@ -783,7 +783,7 @@ def test_get_transaction_includes_flow_members(http_client: TestClient, session_
         in_transaction = Transaction(account_id=account_b, amount=AMOUNT, date=date(year=2026, month=5, day=10))
         session.add_all([out_transaction, in_transaction])
         session.flush()
-        link_transactions_as_flow(db_session=session, transactions=[out_transaction, in_transaction])
+        link_transactions_as_related_group(db_session=session, transactions=[out_transaction, in_transaction])
         session.commit()
         out_id, in_id = out_transaction.id, in_transaction.id
 
@@ -791,12 +791,12 @@ def test_get_transaction_includes_flow_members(http_client: TestClient, session_
 
     assert response.status_code == 200
     body = response.json()
-    assert [member["id"] for member in body["flow_members"]] == [in_id]
-    assert body["flow_members"][0]["account_id"] == account_b
-    assert "flow_members" not in body["flow_members"][0]
+    assert [member["id"] for member in body["related_transactions"]] == [in_id]
+    assert body["related_transactions"][0]["account_id"] == account_b
+    assert "related_transactions" not in body["related_transactions"][0]
 
 
-def test_remove_from_flow_endpoint_clears_link(http_client: TestClient, session_factory: sessionmaker):
+def test_unlink_related_endpoint_clears_link(http_client: TestClient, session_factory: sessionmaker):
     register(http_client)
     credential_id = create_credential(http_client).json()["id"]
     account_a = persist_account(session_factory=session_factory, credential_id=credential_id)
@@ -818,19 +818,19 @@ def test_remove_from_flow_endpoint_clears_link(http_client: TestClient, session_
         )
         session.add_all([out_transaction, in_transaction])
         session.flush()
-        link_transactions_as_flow(db_session=session, transactions=[out_transaction, in_transaction])
+        link_transactions_as_related_group(db_session=session, transactions=[out_transaction, in_transaction])
         session.commit()
         out_id = out_transaction.id
 
-    response = http_client.delete(f"/api/account/{account_a}/transactions/{out_id}/transfer-link")
+    response = http_client.delete(f"/api/account/{account_a}/transactions/{out_id}/related-link")
     assert response.status_code == 204
 
     detail = http_client.get(f"/api/account/{account_a}/transactions/{out_id}").json()
-    assert detail["flow_members"] == []
+    assert detail["related_transactions"] == []
     assert detail["transaction_type"] == "OUTGOING"
 
 
-def test_remove_from_flow_endpoint_404_for_foreign_account(http_client: TestClient, session_factory: sessionmaker):
+def test_unlink_related_endpoint_404_for_foreign_account(http_client: TestClient, session_factory: sessionmaker):
     register(http_client, user_name="owner")
     credential_id = create_credential(http_client).json()["id"]
     account_id = persist_account(session_factory=session_factory, credential_id=credential_id)
@@ -838,11 +838,11 @@ def test_remove_from_flow_endpoint_404_for_foreign_account(http_client: TestClie
 
     register_and_login(http_client, user_name=INTRUDER_USER_NAME)
 
-    response = http_client.delete(f"/api/account/{account_id}/transactions/{transaction_id}/transfer-link")
+    response = http_client.delete(f"/api/account/{account_id}/transactions/{transaction_id}/related-link")
     assert response.status_code == 404
 
 
-def test_add_to_flow_endpoint_links_both_legs(http_client: TestClient, session_factory: sessionmaker):
+def test_link_related_endpoint_links_both_legs(http_client: TestClient, session_factory: sessionmaker):
     register(http_client)
     credential_id = create_credential(http_client).json()["id"]
     account_a = persist_account(session_factory=session_factory, credential_id=credential_id)
@@ -861,16 +861,16 @@ def test_add_to_flow_endpoint_links_both_legs(http_client: TestClient, session_f
     )
 
     response = http_client.put(
-        f"/api/account/{account_a}/transactions/{out_id}/transfer-link",
+        f"/api/account/{account_a}/transactions/{out_id}/related-link",
         json={"counterpart_account_id": account_b, "counterpart_transaction_id": in_id},
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body["transaction_type"] == "TRANSFER_OUT"
-    assert [member["id"] for member in body["flow_members"]] == [in_id]
+    assert [member["id"] for member in body["related_transactions"]] == [in_id]
     counterpart = http_client.get(f"/api/account/{account_b}/transactions/{in_id}").json()
-    assert [member["id"] for member in counterpart["flow_members"]] == [out_id]
+    assert [member["id"] for member in counterpart["related_transactions"]] == [out_id]
     assert counterpart["transaction_type"] == "TRANSFER_IN"
 
 
@@ -892,22 +892,22 @@ def test_link_then_unlink_restores_original_types(http_client: TestClient, sessi
         transaction_type=TransactionType.INCOMING,
     )
     http_client.put(
-        f"/api/account/{account_a}/transactions/{out_id}/transfer-link",
+        f"/api/account/{account_a}/transactions/{out_id}/related-link",
         json={"counterpart_account_id": account_b, "counterpart_transaction_id": in_id},
     )
 
-    response = http_client.delete(f"/api/account/{account_a}/transactions/{out_id}/transfer-link")
+    response = http_client.delete(f"/api/account/{account_a}/transactions/{out_id}/related-link")
 
     assert response.status_code == 204
     detail = http_client.get(f"/api/account/{account_a}/transactions/{out_id}").json()
-    assert detail["flow_members"] == []
+    assert detail["related_transactions"] == []
     assert detail["transaction_type"] == "OUTGOING"
     counterpart = http_client.get(f"/api/account/{account_b}/transactions/{in_id}").json()
-    assert counterpart["flow_members"] == []
+    assert counterpart["related_transactions"] == []
     assert counterpart["transaction_type"] == "INCOMING"
 
 
-def test_add_to_flow_endpoint_conflict_when_already_in_same_flow(
+def test_link_related_endpoint_conflict_when_already_in_same_related_group(
     http_client: TestClient, session_factory: sessionmaker
 ):
     register(http_client)
@@ -916,19 +916,21 @@ def test_add_to_flow_endpoint_conflict_when_already_in_same_flow(
     first_id = persist_transaction(session_factory=session_factory, account_id=account_id, amount=AMOUNT * -1)
     second_id = persist_transaction(session_factory=session_factory, account_id=account_id, amount=AMOUNT)
     http_client.put(
-        f"/api/account/{account_id}/transactions/{first_id}/transfer-link",
+        f"/api/account/{account_id}/transactions/{first_id}/related-link",
         json={"counterpart_account_id": account_id, "counterpart_transaction_id": second_id},
     )
 
     response = http_client.put(
-        f"/api/account/{account_id}/transactions/{first_id}/transfer-link",
+        f"/api/account/{account_id}/transactions/{first_id}/related-link",
         json={"counterpart_account_id": account_id, "counterpart_transaction_id": second_id},
     )
 
     assert response.status_code == 409
 
 
-def test_add_to_flow_endpoint_adds_a_third_to_the_flow(http_client: TestClient, session_factory: sessionmaker):
+def test_link_related_endpoint_adds_a_third_to_the_related_group(
+    http_client: TestClient, session_factory: sessionmaker
+):
     register(http_client)
     credential_id = create_credential(http_client).json()["id"]
     account_id = persist_account(session_factory=session_factory, credential_id=credential_id)
@@ -936,35 +938,35 @@ def test_add_to_flow_endpoint_adds_a_third_to_the_flow(http_client: TestClient, 
     second_id = persist_transaction(session_factory=session_factory, account_id=account_id, amount=AMOUNT)
     third_id = persist_transaction(session_factory=session_factory, account_id=account_id, amount=AMOUNT * -1)
     http_client.put(
-        f"/api/account/{account_id}/transactions/{first_id}/transfer-link",
+        f"/api/account/{account_id}/transactions/{first_id}/related-link",
         json={"counterpart_account_id": account_id, "counterpart_transaction_id": second_id},
     )
 
     response = http_client.put(
-        f"/api/account/{account_id}/transactions/{second_id}/transfer-link",
+        f"/api/account/{account_id}/transactions/{second_id}/related-link",
         json={"counterpart_account_id": account_id, "counterpart_transaction_id": third_id},
     )
 
     assert response.status_code == 200
     detail = http_client.get(f"/api/account/{account_id}/transactions/{third_id}").json()
-    assert sorted(member["id"] for member in detail["flow_members"]) == sorted([first_id, second_id])
+    assert sorted(member["id"] for member in detail["related_transactions"]) == sorted([first_id, second_id])
 
 
-def test_add_to_flow_endpoint_rejects_self_link(http_client: TestClient, session_factory: sessionmaker):
+def test_link_related_endpoint_rejects_self_link(http_client: TestClient, session_factory: sessionmaker):
     register(http_client)
     credential_id = create_credential(http_client).json()["id"]
     account_id = persist_account(session_factory=session_factory, credential_id=credential_id)
     transaction_id = persist_transaction(session_factory=session_factory, account_id=account_id)
 
     response = http_client.put(
-        f"/api/account/{account_id}/transactions/{transaction_id}/transfer-link",
+        f"/api/account/{account_id}/transactions/{transaction_id}/related-link",
         json={"counterpart_account_id": account_id, "counterpart_transaction_id": transaction_id},
     )
 
     assert response.status_code == 422
 
 
-def test_add_to_flow_endpoint_rejects_pending_leg(http_client: TestClient, session_factory: sessionmaker):
+def test_link_related_endpoint_rejects_pending_leg(http_client: TestClient, session_factory: sessionmaker):
     register(http_client)
     credential_id = create_credential(http_client).json()["id"]
     account_id = persist_account(session_factory=session_factory, credential_id=credential_id)
@@ -974,14 +976,14 @@ def test_add_to_flow_endpoint_rejects_pending_leg(http_client: TestClient, sessi
     )
 
     response = http_client.put(
-        f"/api/account/{account_id}/transactions/{booked_id}/transfer-link",
+        f"/api/account/{account_id}/transactions/{booked_id}/related-link",
         json={"counterpart_account_id": account_id, "counterpart_transaction_id": pending_id},
     )
 
     assert response.status_code == 422
 
 
-def test_add_to_flow_endpoint_404_for_foreign_counterpart(http_client: TestClient, session_factory: sessionmaker):
+def test_link_related_endpoint_404_for_foreign_counterpart(http_client: TestClient, session_factory: sessionmaker):
     register(http_client, user_name="owner")
     foreign_credential_id = create_credential(http_client).json()["id"]
     foreign_account_id = persist_account(session_factory=session_factory, credential_id=foreign_credential_id)
@@ -993,7 +995,7 @@ def test_add_to_flow_endpoint_404_for_foreign_counterpart(http_client: TestClien
     own_transaction_id = persist_transaction(session_factory=session_factory, account_id=own_account_id)
 
     response = http_client.put(
-        f"/api/account/{own_account_id}/transactions/{own_transaction_id}/transfer-link",
+        f"/api/account/{own_account_id}/transactions/{own_transaction_id}/related-link",
         json={
             "counterpart_account_id": foreign_account_id,
             "counterpart_transaction_id": foreign_transaction_id,

@@ -10,10 +10,10 @@ from source.backend.bank_handlers.base import FetchedTransaction
 from source.backend.logging_utils import get_logger
 from source.backend.models.base import Base
 from source.backend.models.contracts.contract_assignment import ContractAssignment
-from source.backend.models.transactions.flow_link_source import FlowLinkSource
+from source.backend.models.transactions.related_group import RelatedGroup
+from source.backend.models.transactions.related_link_source import RelatedLinkSource
 from source.backend.models.transactions.transaction_category import TransactionCategory
 from source.backend.models.transactions.transaction_type import TransactionType
-from source.backend.models.transactions.transfer_flow import TransferFlow
 
 if TYPE_CHECKING:
     from sqlalchemy import Connection
@@ -52,12 +52,12 @@ class Transaction(Base):
     expected: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     match_tolerance_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    flow_id: Mapped[int | None] = mapped_column(
-        ForeignKey("transfer_flows.id", ondelete="SET NULL"), nullable=True, index=True
+    related_group_id: Mapped[int | None] = mapped_column(
+        ForeignKey("related_groups.id", ondelete="SET NULL"), nullable=True, index=True
     )
     transfer_original_type: Mapped[TransactionType | None] = mapped_column(SQLEnum(TransactionType), nullable=True)
     transfer_relink_blocked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
-    flow_link_source: Mapped[FlowLinkSource | None] = mapped_column(SQLEnum(FlowLinkSource), nullable=True)
+    related_link_source: Mapped[RelatedLinkSource | None] = mapped_column(SQLEnum(RelatedLinkSource), nullable=True)
 
     recurring_transaction_id: Mapped[int | None] = mapped_column(
         ForeignKey("recurring_transactions.id", ondelete="SET NULL"), nullable=True
@@ -68,7 +68,9 @@ class Transaction(Base):
     )
     contract_assignment: Mapped[ContractAssignment | None] = mapped_column(SQLEnum(ContractAssignment), nullable=True)
 
-    flow: Mapped["TransferFlow | None"] = relationship(back_populates="transactions", foreign_keys=[flow_id])
+    related_group: Mapped["RelatedGroup | None"] = relationship(
+        back_populates="transactions", foreign_keys=[related_group_id]
+    )
 
     account: Mapped["Account"] = relationship(back_populates="transactions")
     contract: Mapped["Contract | None"] = relationship(back_populates="transactions", foreign_keys=[contract_id])
@@ -99,12 +101,14 @@ class Transaction(Base):
 
 
 @event.listens_for(target=Transaction, identifier="before_delete")
-def _dissolve_flow_if_too_small(_mapper: "Mapper", connection: "Connection", target: Transaction) -> None:
-    if target.flow_id is None:
+def _dissolve_related_group_if_too_small(_mapper: "Mapper", connection: "Connection", target: Transaction) -> None:
+    if target.related_group_id is None:
         return
 
     remaining_transactions = connection.execute(
-        select(Transaction.id).where(Transaction.flow_id == target.flow_id).where(Transaction.id != target.id)
+        select(Transaction.id)
+        .where(Transaction.related_group_id == target.related_group_id)
+        .where(Transaction.id != target.id)
     ).all()
     if len(remaining_transactions) > 1:
         return
@@ -112,18 +116,22 @@ def _dissolve_flow_if_too_small(_mapper: "Mapper", connection: "Connection", tar
     restored_type = func.coalesce(Transaction.transfer_original_type, Transaction.transaction_type)  # noqa: FKA100
     connection.execute(
         update(Transaction)
-        .where(Transaction.flow_id == target.flow_id)
+        .where(Transaction.related_group_id == target.related_group_id)
         .where(Transaction.id != target.id)
-        .values(transaction_type=restored_type, transfer_original_type=None, flow_id=None, flow_link_source=None)
+        .values(
+            transaction_type=restored_type, transfer_original_type=None, related_group_id=None, related_link_source=None
+        )
     )
-    connection.execute(delete(TransferFlow).where(TransferFlow.id == target.flow_id))
+    connection.execute(delete(RelatedGroup).where(RelatedGroup.id == target.related_group_id))
 
 
-@event.listens_for(target=TransferFlow, identifier="before_delete")
-def _detach_flow_members(_mapper: "Mapper", connection: "Connection", target: TransferFlow) -> None:
+@event.listens_for(target=RelatedGroup, identifier="before_delete")
+def _detach_related_transactions(_mapper: "Mapper", connection: "Connection", target: RelatedGroup) -> None:
     restored_type = func.coalesce(Transaction.transfer_original_type, Transaction.transaction_type)  # noqa: FKA100
     connection.execute(
         update(Transaction)
-        .where(Transaction.flow_id == target.id)
-        .values(transaction_type=restored_type, transfer_original_type=None, flow_id=None, flow_link_source=None)
+        .where(Transaction.related_group_id == target.id)
+        .values(
+            transaction_type=restored_type, transfer_original_type=None, related_group_id=None, related_link_source=None
+        )
     )

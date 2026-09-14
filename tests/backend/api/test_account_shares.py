@@ -399,7 +399,7 @@ def test_read_only_recipient_may_not_sync_the_shared_credential(http_client: Tes
     assert http_client.post(f"/api/credentials/{credential_id}/sync").status_code == 403
 
 
-def test_flow_members_on_foreign_accounts_stay_hidden(http_client: TestClient):
+def test_related_transactions_on_foreign_accounts_stay_hidden(http_client: TestClient):
     account_id, share_id = _setup(http_client, permission="read")
     private_account_id = setup_manual_account(http_client)
     shared_transaction_id = http_client.post(
@@ -409,18 +409,18 @@ def test_flow_members_on_foreign_accounts_stay_hidden(http_client: TestClient):
         f"/api/account/{private_account_id}/transactions", json={"amount": THIRD_AMOUNT, "date": str(RECENT_DATE)}
     ).json()["id"]
     linked = http_client.put(
-        f"/api/account/{account_id}/transactions/{shared_transaction_id}/transfer-link",
+        f"/api/account/{account_id}/transactions/{shared_transaction_id}/related-link",
         json={
             "counterpart_account_id": private_account_id,
             "counterpart_transaction_id": private_transaction_id,
         },
     )
-    assert [member["id"] for member in linked.json()["flow_members"]] == [private_transaction_id]
+    assert [member["id"] for member in linked.json()["related_transactions"]] == [private_transaction_id]
     _accept(http_client, share_id=share_id)
 
     detail = http_client.get(f"/api/account/{account_id}/transactions/{shared_transaction_id}").json()
 
-    assert detail["flow_members"] == []
+    assert detail["related_transactions"] == []
     assert http_client.get(f"/api/transactions/{private_transaction_id}").status_code == 404
 
 
