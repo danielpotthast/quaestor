@@ -25,8 +25,8 @@ export function SegmentedToggle<T extends string | number>({
       role="group"
       aria-label={ariaLabel}
       className={cn(
-        'flex gap-0.5 rounded-lg p-0.5',
-        fullWidth ? 'border-input h-8 w-full border bg-transparent dark:bg-input/30' : 'bg-muted',
+        'border-input flex h-8 shrink-0 gap-0.5 rounded-lg border bg-transparent p-0.5 dark:bg-input/30',
+        fullWidth && 'w-full',
       )}
     >
       {options.map((option) => {
@@ -38,12 +38,10 @@ export function SegmentedToggle<T extends string | number>({
             aria-pressed={selected}
             onClick={() => onChange(option.value)}
             className={cn(
-              'cursor-pointer rounded-md font-medium transition-colors',
-              fullWidth ? 'flex-1 text-sm' : 'px-2.5 py-1 text-xs',
+              'cursor-pointer rounded-md text-sm font-medium whitespace-nowrap transition-colors',
+              fullWidth ? 'flex-1' : 'px-2.5',
               selected
-                ? fullWidth
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-background text-foreground shadow-sm'
+                ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >

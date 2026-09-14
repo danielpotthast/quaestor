@@ -703,10 +703,10 @@
       },
       "weekLabel": "Week {{week}}",
       "group": {
-        "day": "$t(contracts.period.DAY)",
-        "week": "$t(contracts.period.WEEKLY)",
-        "month": "$t(contracts.period.MONTHLY)",
-        "weekday": "$t(common.weekday)"
+        "day": "$t(stats.contracts.perDay)",
+        "week": "Per week",
+        "month": "$t(stats.contracts.perMonth)",
+        "weekday": "Per weekday"
       }
     },
     "netSavings": {

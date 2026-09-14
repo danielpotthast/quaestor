@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import '@/i18n'
+import { selectFromPopover } from '@/test/popover-select'
 import type { CredentialRead } from '@/lib/auth'
 
 vi.mock('recharts', () => {
@@ -120,7 +121,7 @@ describe('StatsView', () => {
     expect(screen.getByRole('heading', { name: 'Statistics' })).toBeInTheDocument()
     expect(screen.getByLabelText('Accounts')).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Direction' })).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'Chart type' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Chart type')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'By category' })).toBeInTheDocument()
     // Default direction is OUTGOING → recipients.
     expect(screen.getByRole('heading', { name: 'Top recipients' })).toBeInTheDocument()
@@ -169,7 +170,7 @@ describe('StatsView', () => {
     const user = userEvent.setup()
     const { onChange } = renderView()
 
-    await user.click(screen.getByRole('button', { name: 'Pie' }))
+    await selectFromPopover(user, 'Chart type', 'Pie')
 
     expect(onChange.mock.calls.at(-1)?.[0].chartType).toBe('pie')
   })
@@ -192,7 +193,7 @@ describe('StatsView', () => {
     const { onChange } = renderView()
 
     // Any change echoes the current state; direction starts as OUTGOING.
-    await user.click(screen.getByRole('button', { name: 'Bar' }))
+    await selectFromPopover(user, 'Chart type', 'Bar')
 
     expect(onChange.mock.calls.at(-1)?.[0].direction).toBe('OUTGOING')
   })

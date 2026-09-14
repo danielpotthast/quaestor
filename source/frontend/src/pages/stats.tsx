@@ -8,6 +8,7 @@ import { AdvancedFilters } from '@/components/ui/advanced-filters'
 import { FilterHeading } from '@/components/ui/filter-heading'
 import { DateRangeFields } from '@/components/ui/date-range-fields'
 import { Label } from '@/components/ui/label'
+import { SingleSelectPopover } from '@/components/ui/single-select-popover'
 import { TransactionFilterFields } from '@/components/ui/transaction-filter-fields'
 import { CategoryChart } from '@/components/stats/category-chart'
 import { CategoryTrendChart } from '@/components/stats/category-trend-chart'
@@ -389,7 +390,9 @@ export function StatsView({
             isError={categoryQuery.isError}
             isEmpty={(categoryQuery.data?.length ?? 0) === 0}
             action={
-              <SegmentedToggle
+              <SingleSelectPopover
+                width="content"
+                align="end"
                 ariaLabel={t('stats.chartTypeLabel')}
                 value={chartType}
                 onChange={updateChartType}
@@ -462,28 +465,29 @@ export function StatsView({
             isStale={showsStaleData(transactionCounts)}
             isError={transactionCounts.isError}
             isEmpty={(transactionCounts.data?.length ?? 0) === 0}
-            action={
-              <div className="flex flex-wrap gap-2">
-                <SegmentedToggle
-                  ariaLabel={t('stats.transactionCounts.metricLabel')}
-                  value={countMetric}
-                  onChange={setCountMetric}
-                  options={(['count', 'amount'] as const).map((metric) => ({
-                    value: metric,
-                    label: t(`stats.transactionCounts.metric.${metric}`),
-                  }))}
-                />
-                <SegmentedToggle
-                  ariaLabel={t('stats.transactionCounts.groupLabel')}
-                  value={countGroup}
-                  onChange={updateCountGroup}
-                  options={TRANSACTION_COUNT_GROUPINGS.map((grouping) => ({
-                    value: grouping,
-                    label: t(`stats.transactionCounts.group.${grouping}`),
-                  }))}
-                />
-              </div>
-            }
+            action={[
+              <SegmentedToggle
+                key="metric"
+                fullWidth
+                ariaLabel={t('stats.transactionCounts.metricLabel')}
+                value={countMetric}
+                onChange={setCountMetric}
+                options={(['count', 'amount'] as const).map((metric) => ({
+                  value: metric,
+                  label: t(`stats.transactionCounts.metric.${metric}`),
+                }))}
+              />,
+              <SingleSelectPopover
+                key="group"
+                ariaLabel={t('stats.transactionCounts.groupLabel')}
+                value={countGroup}
+                onChange={updateCountGroup}
+                options={TRANSACTION_COUNT_GROUPINGS.map((grouping) => ({
+                  value: grouping,
+                  label: t(`stats.transactionCounts.group.${grouping}`),
+                }))}
+              />,
+            ]}
           >
             <TransactionCountChart
               data={transactionCounts.data ?? []}

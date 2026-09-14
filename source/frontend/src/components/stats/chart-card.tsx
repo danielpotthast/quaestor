@@ -29,6 +29,7 @@ export function ChartCard({
   children,
 }: ChartCardProps) {
   const { t } = useTranslation()
+  const controlsRow = Array.isArray(action) && action.length > 1
 
   return (
     <section
@@ -38,16 +39,17 @@ export function ChartCard({
         isStale && 'opacity-50',
       )}
     >
-      <header className="flex items-center justify-between gap-2">
+      <header className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-primary inline-flex items-center gap-2 text-sm font-semibold">
           {icon}
           {title}
         </h2>
-        <div className="flex items-center gap-2">
-          {action}
+        <div className="ml-auto flex items-center gap-2">
+          {controlsRow ? null : action}
           {info}
         </div>
       </header>
+      {controlsRow ? <div className="grid auto-cols-fr grid-flow-col gap-2">{action}</div> : null}
       {isLoading ? (
         <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
       ) : isError ? (
