@@ -33,7 +33,7 @@ import {
   TransactionDetailView,
   transferPartnerLabel,
 } from '@/pages/transactions.$transactionId'
-import { BackLink } from '@/components/back-link'
+import { NotFound } from '@/components/not-found'
 
 const searchParamsSchema = z.object({
   link_account_id: z.coerce.number().optional(),
@@ -365,10 +365,11 @@ function AttachmentSection({
 function TransactionNotFoundView() {
   const { t } = useTranslation()
   return (
-    <main className="mx-auto max-w-page p-4">
-      <BackLink to="/" />
-      <p className="text-muted-foreground mt-6 text-sm">{t('transaction.notFound')}</p>
-    </main>
+    <NotFound
+      message={t('transaction.notFound')}
+      backTo="/"
+      backLabel={t('common.backToOverview')}
+    />
   )
 }
 

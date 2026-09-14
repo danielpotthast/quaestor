@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import { BottomTabBar } from '@/components/bottom-tab-bar'
+import { NotFound } from '@/components/not-found'
 import { SyncProvider } from '@/components/sync-provider'
 import { Button } from '@/components/ui/button'
 import { NetworkError } from '@/lib/api'
@@ -40,6 +41,7 @@ export const Route = createRootRouteWithContext<{
   component: RootComponent,
   pendingComponent: LoadingScreen,
   errorComponent: RootErrorScreen,
+  notFoundComponent: PageNotFoundScreen,
 })
 
 function RootComponent() {
@@ -84,6 +86,17 @@ export function LoadingScreen() {
       <Loader2 className="text-primary size-8 animate-spin" aria-hidden="true" />
       <span className="sr-only">{label}</span>
     </main>
+  )
+}
+
+export function PageNotFoundScreen() {
+  const { t } = useTranslation()
+  return (
+    <NotFound
+      message={t('common.pageNotFound')}
+      backTo="/"
+      backLabel={t('common.backToOverview')}
+    />
   )
 }
 

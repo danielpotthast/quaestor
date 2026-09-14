@@ -11,7 +11,7 @@ import {
 } from '@/lib/contract'
 import { type TransactionCategory } from '@/lib/transaction'
 import { ContractDetailView } from '@/pages/contracts_.$contractId'
-import { BackLink } from '@/components/back-link'
+import { NotFound } from '@/components/not-found'
 
 export const Route = createFileRoute('/contracts_/$contractId')({
   component: ContractDetailPage,
@@ -70,10 +70,11 @@ function ContractDetailPage() {
 function ContractNotFoundView() {
   const { t } = useTranslation()
   return (
-    <main className="mx-auto max-w-page p-4">
-      <BackLink to="/contracts">{t('contracts.title')}</BackLink>
-      <p className="text-muted-foreground mt-6 text-sm">{t('contracts.notFound')}</p>
-    </main>
+    <NotFound
+      message={t('contracts.notFound')}
+      backTo="/contracts"
+      backLabel={t('contracts.backToList')}
+    />
   )
 }
 

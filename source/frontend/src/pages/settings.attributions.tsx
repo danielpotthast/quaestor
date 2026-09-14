@@ -68,6 +68,10 @@ const ATTRIBUTIONS: Attribution[] = [
     textKey: 'attributions.text.volksbankLogo',
     href: 'https://www.facebook.com/VereinigteVolksbankRaiffeisenbankeG/',
   },
+  {
+    textKey: 'attributions.text.yoda',
+    href: 'https://freesvg.org/yoda',
+  },
 ]
 
 export function SettingsAttributionsPage() {

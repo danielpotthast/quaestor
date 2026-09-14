@@ -44,6 +44,8 @@
     "saving": "Speichern …",
     "copy": "Kopieren",
     "back": "Zurück",
+    "pageNotFound": "Die Seite, die du suchst, dies nicht sie ist.",
+    "backToOverview": "Zurück zur Übersicht",
     "continue": "Weiter",
     "saved": "Gespeichert",
     "copied": "Kopiert",
@@ -213,7 +215,7 @@
     "future": "Geplant für {{date}}",
     "marketValue": "Marktwert",
     "empty": "Noch keine Transaktionen.",
-    "notFound": "Konto nicht gefunden.",
+    "notFound": "Das Konto, das du suchst, dies nicht es ist.",
     "loadingMore": "Weitere Transaktionen werden geladen …"
   },
   "search": {
@@ -445,7 +447,7 @@
       "saveFailed": "Layout konnte nicht gespeichert werden. Bitte erneut versuchen."
     },
     "detail": {
-      "notFound": "Verbindung nicht gefunden.",
+      "notFound": "Die Verbindung, die du suchst, dies nicht sie ist.",
       "backToList": "Zurück zu den Bankverbindungen",
       "accountsEmpty": "Noch keine Konten. Sie erscheinen nach der ersten erfolgreichen Synchronisierung.",
       "accountsEmptyManual": "Noch keine Konten. Lege dein erstes manuelles Konto an.",
@@ -544,7 +546,8 @@
       "revolutLogo": "Revolut-Logo über Icons8",
       "sparkasseLogo": "Sparkassen-Logo über Wikipedia",
       "tradeRepublicLogo": "Trade-Republic-Logo über My German Finances",
-      "volksbankLogo": "Volksbank-Logo über Facebook"
+      "volksbankLogo": "Volksbank-Logo über Facebook",
+      "yoda": "Yoda-Illustration über FreeSVG"
     }
   },
   "version": {
@@ -612,7 +615,7 @@
     "partiallyRefundedBadge": "Teilweise erstattet",
     "refundBadge": "Erstattung",
     "pendingHint": "Vorgemerkt — noch nicht endgültig gebucht und kann sich noch ändern",
-    "notFound": "Transaktion nicht gefunden.",
+    "notFound": "Die Transaktion, die du suchst, dies nicht sie ist.",
     "flow": "Geldfluss",
     "incoming": "Eingehend",
     "outgoing": "Ausgehend",
@@ -875,7 +878,8 @@
     "overdueBanner_months_one": "Die nächste Zahlung ist seit {{count}} Monat überfällig. Ist der Vertrag noch aktiv?",
     "overdueBanner_months_other": "Die nächste Zahlung ist seit {{count}} Monaten überfällig. Ist der Vertrag noch aktiv?",
     "noMembers": "Noch keine Transaktionen zugeordnet.",
-    "notFound": "Vertrag nicht gefunden.",
+    "notFound": "Der Vertrag, den du suchst, dies nicht er ist.",
+    "backToList": "Zurück zu den Verträgen",
     "frequencyUnknown": "Unregelmäßig",
     "contract": "Vertrag",
     "noContract": "Kein Vertrag",

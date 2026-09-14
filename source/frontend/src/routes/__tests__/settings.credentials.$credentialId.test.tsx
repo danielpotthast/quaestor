@@ -69,7 +69,7 @@ afterEach(() => {
 describe('CredentialDetailView', () => {
   it('renders a not-found fallback when the credential is missing', () => {
     renderWithQuery(<CredentialDetailView credential={undefined} onDeleted={vi.fn()} />)
-    expect(screen.getByText('Connection not found.')).toBeInTheDocument()
+    expect(screen.getByText('The connection you seek, this is not.')).toBeInTheDocument()
   })
 
   it('shows the bank header with logo, title and last-synced timestamp', () => {

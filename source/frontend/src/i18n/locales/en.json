@@ -44,6 +44,8 @@
     "saving": "Saving …",
     "copy": "Copy",
     "back": "Back",
+    "pageNotFound": "The page you seek, this is not.",
+    "backToOverview": "Back to overview",
     "continue": "Continue",
     "saved": "Saved",
     "copied": "Copied",
@@ -213,7 +215,7 @@
     "future": "Scheduled for {{date}}",
     "marketValue": "Market value",
     "empty": "No transactions yet.",
-    "notFound": "Account not found.",
+    "notFound": "The account you seek, this is not.",
     "loadingMore": "Loading more transactions…"
   },
   "search": {
@@ -445,7 +447,7 @@
       "saveFailed": "Could not save the layout. Please try again."
     },
     "detail": {
-      "notFound": "Connection not found.",
+      "notFound": "The connection you seek, this is not.",
       "backToList": "Back to bank connections",
       "accountsEmpty": "No accounts yet. They appear after the first successful sync.",
       "accountsEmptyManual": "No accounts yet. Create your first manual account.",
@@ -544,7 +546,8 @@
       "revolutLogo": "Revolut logo by Icons8",
       "sparkasseLogo": "Sparkasse logo via Wikipedia",
       "tradeRepublicLogo": "Trade Republic logo via My German Finances",
-      "volksbankLogo": "Volksbank logo via Facebook"
+      "volksbankLogo": "Volksbank logo via Facebook",
+      "yoda": "Yoda illustration via FreeSVG"
     }
   },
   "version": {
@@ -612,7 +615,7 @@
     "partiallyRefundedBadge": "Partially refunded",
     "refundBadge": "Refund",
     "pendingHint": "Pending — not finally booked yet and may still change",
-    "notFound": "Transaction not found.",
+    "notFound": "The transaction you seek, this is not.",
     "flow": "Money flow",
     "incoming": "Incoming",
     "outgoing": "Outgoing",
@@ -875,7 +878,8 @@
     "overdueBanner_months_one": "The next payment is {{count}} month overdue. Is this contract still active?",
     "overdueBanner_months_other": "The next payment is {{count}} months overdue. Is this contract still active?",
     "noMembers": "No transactions assigned yet.",
-    "notFound": "Contract not found.",
+    "notFound": "The contract you seek, this is not.",
+    "backToList": "Back to contracts",
     "frequencyUnknown": "Irregular",
     "contract": "Contract",
     "noContract": "No contract",

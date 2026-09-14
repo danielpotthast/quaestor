@@ -10,7 +10,7 @@ import { findAccountInUser, useAccountHistory, type AccountHistoryPage } from '@
 import { isStale } from '@/lib/format'
 import { TwoFactorModal } from '@/components/two-factor-modal'
 import { AccountDetailView } from '@/pages/account.$accountId'
-import { BackLink } from '@/components/back-link'
+import { NotFound } from '@/components/not-found'
 
 export const Route = createFileRoute('/account/$accountId')({
   component: AccountDetailPage,
@@ -111,10 +111,7 @@ function AccountDetailPage() {
 function AccountNotFoundView() {
   const { t } = useTranslation()
   return (
-    <main className="mx-auto max-w-page p-4">
-      <BackLink to="/" label={t('common.back')} />
-      <p className="text-muted-foreground mt-6 text-sm">{t('account.notFound')}</p>
-    </main>
+    <NotFound message={t('account.notFound')} backTo="/" backLabel={t('common.backToOverview')} />
   )
 }
 

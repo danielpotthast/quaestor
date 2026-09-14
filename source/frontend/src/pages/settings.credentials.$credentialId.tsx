@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -30,6 +29,7 @@ import { useAppSettings } from '@/lib/settings'
 import { formatDecimal, formatMoney } from '@/lib/format'
 import type { CredentialDetailViewProps } from '@/routes/settings.credentials.$credentialId'
 import { BackLink } from '@/components/back-link'
+import { NotFound } from '@/components/not-found'
 import { useDebouncedAutoSave } from '@/hooks/useDebouncedAutoSave'
 import { RowActions } from '@/components/row-actions'
 import { cn } from '@/lib/utils'
@@ -55,15 +55,23 @@ export function CredentialDetailView({ credential, onDeleted }: CredentialDetail
       t(`banks.${credential.bank}.title`, { defaultValue: credential.bank }))
     : ''
 
+  if (!credential) {
+    return (
+      <NotFound
+        message={t('credentials.detail.notFound')}
+        backTo="/settings/credentials"
+        backLabel={t('credentials.detail.backToList')}
+      />
+    )
+  }
+
   return (
     <main className="mx-auto flex min-h-full max-w-page flex-col gap-6 p-4">
       <header className="flex items-center gap-2">
         <BackLink to="/settings/credentials" label={t('credentials.detail.backToList')} />
       </header>
 
-      {!credential ? (
-        <NotFoundFallback />
-      ) : isSharedCredential(credential) ? (
+      {isSharedCredential(credential) ? (
         <>
           <BankHeader credential={credential} bankTitle={bankTitle} />
           <SharedAccountsSection credential={credential} />
@@ -77,18 +85,6 @@ export function CredentialDetailView({ credential, onDeleted }: CredentialDetail
         </>
       )}
     </main>
-  )
-}
-
-function NotFoundFallback() {
-  const { t } = useTranslation()
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground text-sm">{t('credentials.detail.notFound')}</p>
-      <Button asChild variant="outline" className="self-start">
-        <Link to="/settings/credentials">{t('credentials.detail.backToList')}</Link>
-      </Button>
-    </div>
   )
 }
 
