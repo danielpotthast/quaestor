@@ -307,7 +307,7 @@ export function AccountDetailView({
       <div ref={stickyHeaderRef} className="bg-background fixed top-0 right-0 left-0 z-20">
         <div className="mx-auto flex w-full max-w-page flex-col px-4 pt-4 pb-3">
           <header className="flex items-center justify-between gap-2 pr-2">
-            <BackLink to="/" label={t('common.back')} />
+            <BackLink to="/" label={t('common.overview')} showLabel />
             <div className="-mr-2.5 flex items-center gap-1">
               <PrivacyToggle className="p-2.5" />
               {onSyncClick ? (

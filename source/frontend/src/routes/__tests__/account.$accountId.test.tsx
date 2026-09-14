@@ -170,7 +170,7 @@ describe('AccountDetailView', () => {
 
   it('renders the back link to "/"', () => {
     renderView([])
-    expect(screen.getByRole('link', { name: 'Back' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/')
   })
 
   it('shows the prominent add button and no list heading when there are no expected transactions', () => {

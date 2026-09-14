@@ -45,6 +45,11 @@ describe('BackLink', () => {
     expect(routerState.back).not.toHaveBeenCalled()
   })
 
+  it('shows the label next to the chevron when showLabel is set', () => {
+    render(<BackLink to="/" label="Overview" showLabel />)
+    expect(screen.getByRole('link', { name: 'Overview' })).toHaveTextContent('Overview')
+  })
+
   it('uses its children as the accessible name when labelled', () => {
     render(<BackLink to="/contracts">Contracts</BackLink>)
     expect(screen.getByRole('link', { name: 'Contracts' })).toHaveAttribute('href', '/contracts')

@@ -3,15 +3,18 @@ import { ChevronLeft } from 'lucide-react'
 import type { ComponentProps } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { cn } from '@/lib/utils'
+
 type BackLinkProps = {
   to: string
   params?: Record<string, string>
   onClick?: React.MouseEventHandler<HTMLAnchorElement>
   label?: string
+  showLabel?: boolean
   children?: React.ReactNode
 }
 
-export function BackLink({ label, children, ...rest }: BackLinkProps) {
+export function BackLink({ label, showLabel, children, ...rest }: BackLinkProps) {
   const { t } = useTranslation()
   const router = useRouter()
   const canGoBack = useCanGoBack()
@@ -43,11 +46,15 @@ export function BackLink({ label, children, ...rest }: BackLinkProps) {
   return (
     <Link
       aria-label={label ?? t('common.back')}
-      className="text-primary hover:text-primary/80 -ml-1.5 rounded-md p-1.5 transition-colors"
+      className={cn(
+        'text-primary hover:text-primary/80 -ml-1.5 rounded-md p-1.5 transition-colors',
+        showLabel && 'inline-flex items-center gap-1',
+      )}
       {...linkProps}
       onClick={handleClick}
     >
       <ChevronLeft className="size-5" />
+      {showLabel && <span className="text-sm max-sm:hidden">{label}</span>}
     </Link>
   )
 }
