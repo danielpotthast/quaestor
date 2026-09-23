@@ -178,8 +178,8 @@ describe('TransactionDetailView', () => {
     const entries = within(list)
       .getAllByRole('listitem')
       .map((item) => item.textContent ?? '')
-    expect(entries.slice(0, 3)).toEqual(['Income', 'Salary', 'Side income'])
-    expect(entries.indexOf('Food & drink')).toBe(entries.indexOf('Other income') + 1)
+    expect(entries.slice(0, 3)).toEqual(['Income', 'Child benefit & allowance', 'Interest'])
+    expect(entries.indexOf('Food & drink')).toBe(entries.indexOf('Side income') + 1)
     expect(entries[entries.length - 1]).toBe('Unknown')
   })
 

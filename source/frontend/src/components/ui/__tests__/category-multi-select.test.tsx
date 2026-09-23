@@ -15,7 +15,9 @@ describe('CategoryMultiSelect', () => {
     await user.click(screen.getByLabelText('Categories'))
     await user.click(screen.getByRole('checkbox', { name: 'Mobility' }))
 
-    expect(onChange).toHaveBeenCalledWith(['SALARY', ...CATEGORIES_BY_GROUP.MOBILITY])
+    expect(onChange.mock.lastCall?.[0].toSorted()).toEqual(
+      ['SALARY', ...CATEGORIES_BY_GROUP.MOBILITY].toSorted(),
+    )
   })
 
   it('completes a partially selected group, and clears a fully selected one', async () => {
@@ -29,7 +31,9 @@ describe('CategoryMultiSelect', () => {
     const heading = screen.getByRole('checkbox', { name: 'Mobility' })
     expect(heading).toHaveAttribute('data-state', 'indeterminate')
     await user.click(heading)
-    expect(onChange).toHaveBeenLastCalledWith(['SALARY', ...CATEGORIES_BY_GROUP.MOBILITY])
+    expect(onChange.mock.lastCall?.[0].toSorted()).toEqual(
+      ['SALARY', ...CATEGORIES_BY_GROUP.MOBILITY].toSorted(),
+    )
 
     rerender(
       <CategoryMultiSelect

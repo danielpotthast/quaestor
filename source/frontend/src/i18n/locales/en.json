@@ -1027,7 +1027,7 @@
     "description": "Your own rules for automatic categorization",
     "intro": "When the purpose or counterparty of a transaction contains a rule's search term, it gets that rule's category. Your rules come before the default rules, newer rules before older ones. Categories you set by hand are left alone.",
     "loadError": "Could not load the rules.",
-    "rulesTitle": "Rules",
+    "rulesTitle": "Your own rules for categories",
     "pattern": "Search term",
     "patternPlaceholder": "e.g. Kleinanzeigen",
     "addRule": "Add rule",
@@ -1049,11 +1049,11 @@
     "customName": "Category name",
     "matcherCount_one": "{{count}} search term",
     "matcherCount_other": "{{count}} search terms",
-    "matcherCountWithDisabled_one": "{{count}} search term · {{disabled}} off",
-    "matcherCountWithDisabled_other": "{{count}} search terms · {{disabled}} off",
+    "ownCount": "{{amount}} own",
+    "disabledCount": "{{amount}} off",
     "rulesDescription": "Your rules come before the default rules. Default rules can be switched off, your own ones edited and deleted.",
     "noMatches": "No rule matches the search.",
-    "ownRule": "your rule",
-    "ownRuleShort": "yours"
+    "ownRule": "Your rule",
+    "ownRuleShort": "Yours"
   }
 }

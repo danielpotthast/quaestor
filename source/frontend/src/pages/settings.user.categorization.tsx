@@ -136,13 +136,25 @@ function RulesSection({
                     />
                     <CategoryAvatar category={category} className="size-8" iconClassName="size-4" />
                     <span className="truncate text-sm font-medium">{catalog.label(category)}</span>
-                    <span className="text-muted-foreground ml-auto text-xs whitespace-nowrap">
-                      {disabledCount > 0
-                        ? t('categorization.matcherCountWithDisabled', {
-                            count: own.length + defaults.length,
-                            disabled: disabledCount,
-                          })
-                        : t('categorization.matcherCount', { count: own.length + defaults.length })}
+                    {/* A phone has no room for one line, so the counts stack up on the right */}
+                    <span className="text-muted-foreground ml-auto flex flex-col items-end text-xs whitespace-nowrap sm:flex-row sm:gap-1.5">
+                      <span>
+                        {t('categorization.matcherCount', { count: own.length + defaults.length })}
+                      </span>
+                      {own.length > 0 ? (
+                        <>
+                          <span className="hidden sm:inline">·</span>
+                          <span>{t('categorization.ownCount', { amount: own.length })}</span>
+                        </>
+                      ) : null}
+                      {disabledCount > 0 ? (
+                        <>
+                          <span className="hidden sm:inline">·</span>
+                          <span>
+                            {t('categorization.disabledCount', { amount: disabledCount })}
+                          </span>
+                        </>
+                      ) : null}
                     </span>
                   </summary>
                   <ul className="flex flex-col px-3 pb-3 pl-14">
@@ -323,7 +335,7 @@ function RuleRow({ rule, onEdit }: { rule: CategoryRuleRead; onEdit: () => void 
   const onDelete = () => report(remove.mutateAsync(rule.id), t('categorization.deleted'))
 
   return (
-    <li className="flex items-center gap-3 py-1.5">
+    <li className="flex min-h-7 items-center gap-3">
       <span className="min-w-0 flex-1 truncate font-mono text-sm">{rule.pattern}</span>
       <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs">
         <span className="sm:hidden">{t('categorization.ownRuleShort')}</span>
@@ -346,7 +358,7 @@ function DefaultMatcherRow({ matcher }: { matcher: DefaultMatcherRead }) {
     )
 
   return (
-    <li className="flex items-center gap-3 py-1.5">
+    <li className="flex min-h-7 items-center gap-3">
       <span className="min-w-0 flex-1 truncate font-mono text-sm">{matcher.pattern}</span>
       <Switch
         aria-label={matcher.pattern}

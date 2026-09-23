@@ -1027,7 +1027,7 @@
     "description": "Eigene Regeln für die automatische Zuordnung",
     "intro": "Enthält der Verwendungszweck oder die Gegenpartei einer Buchung den Suchbegriff einer Regel, bekommt sie deren Kategorie. Eigene Regeln gehen den Standard-Regeln vor, neuere Regeln älteren. Manuell gesetzte Kategorien bleiben unangetastet.",
     "loadError": "Regeln konnten nicht geladen werden.",
-    "rulesTitle": "Regeln",
+    "rulesTitle": "Eigene Regeln für Kategorien",
     "pattern": "Suchbegriff",
     "patternPlaceholder": "z. B. Kleinanzeigen",
     "addRule": "Regel hinzufügen",
@@ -1049,11 +1049,11 @@
     "customName": "Kategoriename",
     "matcherCount_one": "{{count}} Suchbegriff",
     "matcherCount_other": "{{count}} Suchbegriffe",
-    "matcherCountWithDisabled_one": "{{count}} Suchbegriff · {{disabled}} aus",
-    "matcherCountWithDisabled_other": "{{count}} Suchbegriffe · {{disabled}} aus",
+    "ownCount": "{{amount}} Eigener",
+    "disabledCount": "{{amount}} aus",
     "rulesDescription": "Eigene Regeln gehen den Standard-Regeln vor. Standard-Regeln kannst du ausschalten, eigene bearbeiten und löschen.",
     "noMatches": "Keine Regel passt zur Suche.",
-    "ownRule": "eigene Regel",
-    "ownRuleShort": "eigene"
+    "ownRule": "Eigene Regel",
+    "ownRuleShort": "Eigene"
   }
 }
