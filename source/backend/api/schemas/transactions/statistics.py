@@ -4,7 +4,6 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 from source.backend.api.schemas.transactions.transaction import TransactionRead
-from source.backend.models.transactions.transaction_category import TransactionCategory
 from source.backend.models.transactions.transaction_type import TransactionType
 
 StatisticsDirection = Literal["INCOMING", "OUTGOING"]
@@ -23,7 +22,7 @@ class DailyNetWorthQuery(NetWorthQuery):
 
 
 class StatisticsQuery(NetWorthQuery):
-    categories: list[TransactionCategory] = Field(default_factory=list)
+    categories: list[str] = Field(default_factory=list)
     transaction_types: list[TransactionType] = Field(default_factory=list)
 
 
@@ -48,12 +47,12 @@ class TransactionCountsQuery(StatisticsQuery):
 
 
 class CategorySlice(BaseModel):
-    category: TransactionCategory
+    category: str
     total: float
 
 
 class CategoryTrendSlice(BaseModel):
-    category: TransactionCategory
+    category: str
     current: float
     baseline: float
 

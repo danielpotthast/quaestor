@@ -33,8 +33,55 @@ export const TRANSACTION_TYPES = [
 
 export type TransactionType = (typeof TRANSACTION_TYPES)[number]
 
-import { TRANSACTION_CATEGORIES, type TransactionCategory } from './transactionCategories.gen'
-export { TRANSACTION_CATEGORIES, type TransactionCategory }
+import {
+  CATEGORIES_BY_GROUP,
+  CATEGORY_GROUPS,
+  TRANSACTION_CATEGORIES,
+  type CategoryGroup,
+  type TransactionCategory,
+} from './transactionCategories.gen'
+export {
+  CATEGORIES_BY_GROUP,
+  CATEGORY_GROUPS,
+  TRANSACTION_CATEGORIES,
+  type CategoryGroup,
+  type TransactionCategory,
+}
+
+export type CategoryKey = TransactionCategory | `CUSTOM_${string}`
+
+export function isCustomCategoryKey(value: string): value is `CUSTOM_${string}` {
+  return value.startsWith('CUSTOM_')
+}
+
+export const CATEGORY_GROUP_OF = Object.fromEntries(
+  CATEGORY_GROUPS.flatMap((group) =>
+    CATEGORIES_BY_GROUP[group].map((category) => [category, group]),
+  ),
+) as Partial<Record<TransactionCategory, CategoryGroup>>
+
+export function isCategoryGroup(value: string): value is CategoryGroup {
+  return (CATEGORY_GROUPS as readonly string[]).includes(value)
+}
+
+export function expandCategorySelection(
+  values: readonly string[],
+  customCategories: readonly { key: CategoryKey; group: CategoryGroup }[] = [],
+): CategoryKey[] {
+  const expanded = values.flatMap((value): CategoryKey[] =>
+    isCategoryGroup(value)
+      ? [
+          ...CATEGORIES_BY_GROUP[value],
+          ...customCategories
+            .filter((custom) => custom.group === value)
+            .map((custom) => custom.key),
+        ]
+      : (TRANSACTION_CATEGORIES as readonly string[]).includes(value) || isCustomCategoryKey(value)
+        ? [value as CategoryKey]
+        : [],
+  )
+  return [...new Set(expanded)]
+}
 
 export const transactionQueryKeys = {
   all: ['transaction'] as const,
@@ -65,7 +112,7 @@ export function useTransactionById(transactionId: number) {
 
 export interface TransactionPatch {
   note?: string | null
-  category?: TransactionCategory
+  category?: CategoryKey | null
   // Manual-account-only fields
   amount?: number
   date?: string // ISO yyyy-mm-dd
@@ -98,7 +145,7 @@ export interface TransactionCreatePayload {
   purpose?: string | null
   other_party?: string | null
   transaction_type?: TransactionType | null
-  category?: TransactionCategory | null
+  category?: CategoryKey | null
   note?: string | null
 }
 
