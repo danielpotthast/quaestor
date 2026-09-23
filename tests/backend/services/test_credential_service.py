@@ -314,6 +314,27 @@ def test_sync_all_due_credentials_commits_the_cleared_failure_after_a_successful
     assert _stored_sync_failure(session_factory, credential_id=credential_id) == (None, None)
 
 
+def test_sync_credential_object_commits_the_attempt_before_talking_to_the_bank(
+    session_factory: sessionmaker, monkeypatch: pytest.MonkeyPatch
+):
+    user_id = create_user(session_factory).id
+    credential_id = persist_credential(session_factory, user_id=user_id)
+    committed_attempts: list[datetime | None] = []
+
+    def fake_sync(self: Credential, handler: BankHandler) -> None:
+        with session_factory() as other_session:
+            committed_attempts.append(
+                other_session.get(entity=Credential, ident=credential_id).last_sync_attempt_timestamp
+            )
+
+    monkeypatch.setattr(target=Credential, name="sync", value=fake_sync)
+
+    with session_factory() as session:
+        credential_service.sync_credential_object(credential=session.get(entity=Credential, ident=credential_id))
+
+    assert committed_attempts[0] is not None
+
+
 def test_sync_credential_object_records_every_message_of_a_chained_failure(
     session_factory: sessionmaker, monkeypatch: pytest.MonkeyPatch
 ):

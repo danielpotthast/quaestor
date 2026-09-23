@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from source.backend.bank_handlers import BANKS_BY_NAME, BankProvider
 from source.backend.bank_handlers.base import CancelCheck, TwoFactorStateCallback
@@ -254,6 +254,9 @@ def sync_credential_object(
     reevaluate_two_factor_requirement: bool = False,
 ) -> SyncResult:
     credential.last_sync_attempt_timestamp = utc_now()
+    db_session = object_session(credential)
+    if db_session is not None:
+        db_session.commit()
     try:
         result = _sync_credential_object(
             credential=credential,

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, List
 
@@ -7,7 +8,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from source.backend.bank_handlers import BankHandler, BankProvider, handler_for
-from source.backend.bank_handlers.base import BankSession, FetchedAccount, FetchedTransaction
+from source.backend.bank_handlers.base import BalanceObservation, BankSession, FetchedAccount, FetchedTransaction
 from source.backend.exceptions import JobErrorCode
 from source.backend.helpers import get_key_of_transaction, index_transactions_for_matching, utc_now
 from source.backend.logging_utils import get_logger
@@ -23,6 +24,30 @@ PENDING_BOOKED_MATCH_WINDOW = timedelta(days=7)
 
 if TYPE_CHECKING:
     from source.backend.models.auth.user import User
+
+
+@dataclass(frozen=True)
+class _FetchedAccountData:
+    account: FetchedAccount
+    balance: float
+    transactions: list[FetchedTransaction]
+    market_value_history: list[BalanceObservation]
+    balance_observations: list[BalanceObservation]
+
+    @classmethod
+    def fetch(
+        cls: type["_FetchedAccountData"], bank_session: BankSession, account: FetchedAccount, transactions_since: date
+    ) -> "_FetchedAccountData":
+        balance = bank_session.get_balance(account)
+        transactions = bank_session.get_transactions(account=account, start_date=transactions_since)
+        market_value_history = bank_session.get_market_value_history(account)
+        return cls(
+            account=account,
+            balance=balance,
+            transactions=transactions,
+            market_value_history=market_value_history,
+            balance_observations=[] if market_value_history else bank_session.get_balance_observations(account),
+        )
 
 
 class Credential(Base):
@@ -72,9 +97,6 @@ class Credential(Base):
         )
 
     def sync(self, handler: BankHandler) -> None:
-        by_external_id = {account.external_id: account for account in self.accounts if account.external_id}
-        by_name = {account.name: account for account in self.accounts}
-
         transactions_since = (
             # some PSD2 ASPSPs (e.g. PayPal) reject 1970-01-01 as "earlier than 1970" once it shifts across a timezone
             date(year=1970, month=1, day=2)
@@ -82,12 +104,11 @@ class Credential(Base):
             else self.last_successful_sync_timestamp.date()
         )
         with handler.session() as bank:
-            created_accounts, updated_accounts, created_transactions = self._sync_accounts_of_credential(
-                bank_session=bank,
-                by_external_id=by_external_id,
-                by_name=by_name,
-                transactions_since=transactions_since,
-            )
+            fetched_accounts = [
+                _FetchedAccountData.fetch(bank_session=bank, account=account, transactions_since=transactions_since)
+                for account in bank.get_accounts()
+            ]
+        created_accounts, updated_accounts, created_transactions = self._sync_accounts_of_credential(fetched_accounts)
         self.last_successful_sync_timestamp = utc_now()
         system_id = getattr(bank, "system_id", None)
         if system_id:
@@ -97,20 +118,17 @@ class Credential(Base):
             f"{updated_accounts} account(s) updated, {created_transactions} transaction(s) created"
         )
 
-    def _sync_accounts_of_credential(
-        self,
-        bank_session: BankSession,
-        by_external_id: dict[str, Account],
-        by_name: dict[str, Account],
-        transactions_since: date,
-    ) -> tuple[int, int, int]:
+    def _sync_accounts_of_credential(self, fetched_accounts: list[_FetchedAccountData]) -> tuple[int, int, int]:
+        by_external_id = {account.external_id: account for account in self.accounts if account.external_id}
+        by_name = {account.name: account for account in self.accounts}
+        rules = self.user.categorization_rules
         created_accounts = 0
         updated_accounts = 0
         created_transactions = 0
         claimed_account_ids: set[int] = set()
-        rules = self.user.categorization_rules
 
-        for fetched_account in bank_session.get_accounts():
+        for fetched in fetched_accounts:
+            fetched_account = fetched.account
             # Prefer matching by the stable external id
             account = by_external_id.get(fetched_account.external_id) if fetched_account.external_id else None
             if account is None:
@@ -132,34 +150,25 @@ class Credential(Base):
                 account.external_id = fetched_account.external_id
             claimed_account_ids.add(id(account))
             account.transaction_history_incomplete = fetched_account.transaction_history_incomplete
-            account.balance = bank_session.get_balance(fetched_account)
+            account.balance = fetched.balance
 
             created_transactions += self._sync_transactions_of_account(
-                account=account,
-                bank_session=bank_session,
-                fetched_account=fetched_account,
-                transactions_since=transactions_since,
-                rules=rules,
+                account=account, fetched_transactions=fetched.transactions, rules=rules
             )
 
-            market_value_history = bank_session.get_market_value_history(fetched_account)
-            if market_value_history:
-                account.record_market_value_history(market_value_history)
+            if fetched.market_value_history:
+                account.record_market_value_history(fetched.market_value_history)
             else:
-                account.record_balance_observations(bank_session.get_balance_observations(fetched_account))
+                account.record_balance_observations(fetched.balance_observations)
                 account.recompute_balances_at_date()
         return created_accounts, updated_accounts, created_transactions
 
     @staticmethod
     def _sync_transactions_of_account(
         account: Account,
-        bank_session: BankSession,
-        fetched_account: FetchedAccount,
-        transactions_since: date,
+        fetched_transactions: list[FetchedTransaction],
         rules: CategorizationRules,
     ) -> int:
-        fetched_transactions = bank_session.get_transactions(account=fetched_account, start_date=transactions_since)
-
         # Bank "Vormerkungen" (pending, NOT expected) have no stable identity — their
         # date/purpose/other_party can still change before they book. Instead of trying to match them
         # across syncs (which creates duplicates), we treat them as ephemeral: drop the old ones and

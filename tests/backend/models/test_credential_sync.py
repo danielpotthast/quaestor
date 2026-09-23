@@ -2,7 +2,8 @@ from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import event
+from sqlalchemy.orm import Session, sessionmaker
 
 from source.backend.bank_handlers.base import (
     BalanceObservation,
@@ -129,6 +130,36 @@ def test_sync_persists_system_id_reported_by_the_bank_session(session_factory: s
     with session_factory() as session:
         credential = session.get(entity=Credential, ident=credential_id)
         assert credential.credentials["system_id"] == "1234567890"
+
+
+def test_sync_fetches_everything_from_the_bank_before_writing_to_the_db(session_factory: sessionmaker):
+    credential_id = persist_credential_with_new_user(session_factory)
+    with session_factory() as session:
+        make_account(session, credential_id=credential_id, name=ACCOUNT_IBAN)
+        make_account(session, credential_id=credential_id, name=SECOND_ACCOUNT_IBAN)
+        session.commit()
+    fake_session = FakeBankSession(
+        accounts=[FetchedAccount(name=ACCOUNT_IBAN), FetchedAccount(name=SECOND_ACCOUNT_IBAN)],
+        balances={ACCOUNT_IBAN: DEFAULT_AMOUNT, SECOND_ACCOUNT_IBAN: SECOND_AMOUNT},
+        transactions={},
+    )
+    flushes: list[Session] = []
+    get_transactions = fake_session.get_transactions
+
+    def get_transactions_without_prior_flush(account: FetchedAccount, start_date: date) -> list[FetchedTransaction]:
+        assert not flushes
+        return get_transactions(account=account, start_date=start_date)
+
+    fake_session.get_transactions = get_transactions_without_prior_flush
+
+    with session_factory() as session:
+        event.listen(
+            target=session, identifier="after_flush", fn=lambda flushed_session, _: flushes.append(flushed_session)
+        )
+        credential = session.get(entity=Credential, ident=credential_id)
+        credential.sync(build_handler(fake_session))
+
+    assert len(fake_session.get_transactions_calls) == 2
 
 
 def test_sync_matches_existing_account_by_name_and_adds_missing_ones(session_factory: sessionmaker):
