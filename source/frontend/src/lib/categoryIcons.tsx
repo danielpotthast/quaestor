@@ -189,7 +189,7 @@ const NO_TONE = 'bg-muted text-muted-foreground'
 export function useCategoryOptions({
   includeCustom = true,
 }: { includeCustom?: boolean } = {}): SingleSelectOption<CategoryKey>[] {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const catalog = useCategoryCatalog()
   return useMemo(() => {
     const option = (category: CategoryKey, group?: string) => ({
@@ -202,11 +202,12 @@ export function useCategoryOptions({
       ...CATEGORY_GROUPS.flatMap((group) =>
         catalog
           .categoriesOf(group, includeCustom)
-          .map((category) => option(category, t(`common.transactionLabel.${group}`))),
+          .map((category) => option(category, t(`common.transactionLabel.${group}`)))
+          .sort((a, b) => a.label.localeCompare(b.label, i18n.language)),
       ),
       option('UNKNOWN'),
     ]
-  }, [t, catalog, includeCustom])
+  }, [t, i18n.language, catalog, includeCustom])
 }
 
 export function CategoryAvatar({

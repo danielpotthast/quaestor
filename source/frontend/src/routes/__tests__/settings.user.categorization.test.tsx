@@ -137,7 +137,8 @@ describe('SettingsCategorizationView', () => {
         .getAllByRole('listitem')
         .map((row) => row.querySelector('span')?.textContent),
     ).toEqual(['kaufland', 'rewe'])
-    expect(within(supermarket).getByText('your rule')).toBeInTheDocument()
+    expect(within(supermarket).getByText('Your rule')).toBeInTheDocument()
+    expect(within(supermarket).getByText('1 own')).toBeInTheDocument()
     expect(within(supermarket).getByRole('button', { name: 'Edit' })).toBeInTheDocument()
   })
 
@@ -168,11 +169,9 @@ describe('SettingsCategorizationView', () => {
         .filter((label) => label === 'Streaming' || label === 'Supermarket'),
     ).toEqual(['Streaming', 'Supermarket'])
     expect(within(supermarket).getByText('2 search terms')).toBeInTheDocument()
-    expect(
-      within(screen.getByText('Streaming').closest('details') as HTMLElement).getByText(
-        '1 search term · 1 off',
-      ),
-    ).toBeInTheDocument()
+    const streaming = screen.getByText('Streaming').closest('details') as HTMLElement
+    expect(within(streaming).getByText('1 search term')).toBeInTheDocument()
+    expect(within(streaming).getByText('1 off')).toBeInTheDocument()
 
     await user.click(within(supermarket).getByText('Supermarket'))
 
@@ -318,7 +317,7 @@ describe('SettingsCategorizationView', () => {
     const entries = within(options)
       .getAllByRole('listitem')
       .map((item) => item.textContent ?? '')
-    expect(entries.indexOf('Bio-Laden')).toBe(entries.indexOf('Food delivery') + 1)
+    expect(entries.indexOf('Bio-Laden')).toBe(entries.indexOf('Food delivery') - 1)
   })
 
   it('switches a default matcher off', async () => {
