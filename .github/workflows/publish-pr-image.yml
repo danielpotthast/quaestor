@@ -30,12 +30,13 @@ jobs:
         id: pr
         env:
           GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
-          number=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/pulls" \
-            --jq 'map(select(.state == "open")) | first | .number // empty')
+          number=$(gh api -X GET "repos/${GITHUB_REPOSITORY}/pulls" -f state=open -f "head=${HEAD_OWNER}:${HEAD_BRANCH}" \
+            --jq 'first | .number // empty')
           if [[ -z "${number}" ]]; then
-            echo "::error::No open PR found for commit ${HEAD_SHA}"
+            echo "::error::No open PR found for ${HEAD_OWNER}:${HEAD_BRANCH}"
             exit 1
           fi
           echo "PR: #${number}"
