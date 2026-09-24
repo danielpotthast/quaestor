@@ -588,7 +588,7 @@ def test_sync_credential_persists_the_rotated_session_state_but_not_the_partial_
 
     def failing_sync(self: Credential, handler: BankHandler) -> None:
         handler.session_state = {"archive": "rotated"}
-        self.sync_enabled = False  # stands in for half-synced changes that must be rolled back
+        self.sync_enabled = False
         raise RuntimeError("rate-limited")
 
     monkeypatch.setattr(target=Credential, name="sync", value=failing_sync)
@@ -600,7 +600,6 @@ def test_sync_credential_persists_the_rotated_session_state_but_not_the_partial_
     stored = _stored_credential(session_factory, credential_id=credential_id)
     assert stored.session_state == {"archive": "rotated"}
     assert stored.sync_enabled is True
-    # A manual sync reports its failure through the job, not the credential
     assert stored.last_sync_error is None
 
 
@@ -726,42 +725,6 @@ def test_sync_all_due_credentials_starts_no_interactive_challenge(
     start_login.assert_not_called()
     assert _stored_credential(session_factory, credential_id=credential_id).requires_two_factor_authentication is False
     assert_log_contains(caplog, message="requires re-authentication; nobody is around to start it")
-
-
-@pytest.mark.parametrize(
-    argnames=("bank", "credentials", "login_module", "login_result", "expected_flag"),
-    argvalues=[
-        (BankProvider.SCALABLE_CAPITAL, {}, scalable_capital_login, {"archive": "fresh"}, False),
-        (BankProvider.TRADE_REPUBLIC, {"phone": PHONE_NUMBER, "pin": PIN}, trade_republic_login, "cookies", True),
-    ],
-)
-def test_confirm_two_factor_enables_unattended_sync_only_where_supported(
-    session_factory: sessionmaker,
-    monkeypatch: pytest.MonkeyPatch,
-    bank: BankProvider,
-    credentials: dict[str, str],
-    login_module: object,
-    login_result: object,
-    expected_flag: bool,
-):
-    user_id = create_user(session_factory).id
-    credential_id = persist_credential(
-        session_factory,
-        user_id=user_id,
-        bank=bank,
-        credentials=credentials,
-        requires_two_factor_authentication=True,
-    )
-    monkeypatch.setattr(target=login_module, name="complete", value=MagicMock(return_value=login_result))
-    monkeypatch.setattr(target=Credential, name="sync", value=MagicMock())
-
-    with session_factory() as session:
-        credential_service.confirm_two_factor(
-            db_session=session, credential_id=credential_id, challenge_token=CHALLENGE_TOKEN, code=TWO_FACTOR_CODE
-        )
-
-    stored = _stored_credential(session_factory, credential_id=credential_id)
-    assert stored.requires_two_factor_authentication is expected_flag
 
 
 def test_confirm_two_factor_keeps_the_new_login_when_the_first_sync_fails(

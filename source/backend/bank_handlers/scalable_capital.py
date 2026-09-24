@@ -383,7 +383,6 @@ def _share_moves_by_isin(raw_transactions: list[dict]) -> dict[str, list[tuple[d
 
 class ScalableCapitalHandler(BankHandler):
     CREDENTIAL_FIELDS: tuple[str, ...] = ()
-    SUPPORTS_UNATTENDED_SYNC = True  # the CLI refreshes its tokens on its own
 
     def begin_two_factor_challenge(self, credential_id: int) -> TwoFactorChallenge:
         ensure_cli_binary_available()

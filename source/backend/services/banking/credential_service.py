@@ -36,7 +36,6 @@ logger = get_logger(__name__)
 TWO_FACTOR_REEVALUATION_MIN_GAP = timedelta(hours=24)
 APP_OPEN_SYNC_MIN_GAP = timedelta(minutes=10)
 
-# Quaestor runs as a single process, so in-memory locks suffice
 _sync_locks: dict[int, threading.Lock] = {}
 _sync_locks_guard = threading.Lock()
 
@@ -225,7 +224,6 @@ def sync_credential(
     is_cancelled: CancelCheck | None = None,
 ) -> SyncResult:
     logger.debug(f"Sync requested for credential {credential_id}")
-    # Waits for e.g. a cancelled sync whose thread still runs
     with _sync_lock(credential_id):
         credential = get_credential(db_session=db_session, credential_id=credential_id)
         snapshot = notification_engine.capture_sync_snapshot(credential)
@@ -245,7 +243,6 @@ def sync_credential(
 def _persist_session_state_of_failed_sync(
     db_session: Session, credential: Credential, kept_fields: tuple[str, ...] = ("session_state",)
 ) -> None:
-    # Drops half-synced data but keeps e.g. a rotated refresh token
     try:
         kept_values = {name: getattr(credential, name) for name in kept_fields}
         db_session.rollback()
@@ -354,7 +351,6 @@ def _sync_credential_object(
             device_code=challenge.device_code,
         )
     finally:
-        # Also on failure: the handler may have rotated its session
         credential.session_state = handler.session_state
 
     if reevaluate_two_factor_requirement and _should_reevaluate_two_factor(previous_fetching_timestamp):
@@ -404,7 +400,6 @@ def sync_all_due_credentials(db_session: Session) -> None:
 
         already_failing = credential.last_sync_error_code is not None
         try:
-            # A sync since this run started may have rotated the session
             db_session.refresh(credential)
             snapshot = notification_engine.capture_sync_snapshot(credential)
             sync_credential_object(credential=credential, start_interactive_challenge=False)
@@ -413,7 +408,6 @@ def sync_all_due_credentials(db_session: Session) -> None:
             synced_credentials.append((credential, snapshot))
         except Exception:
             failed += 1
-            # Roll back first, logging the credential needs a usable session
             _persist_session_state_of_failed_sync(
                 db_session=db_session,
                 credential=credential,
@@ -426,7 +420,6 @@ def sync_all_due_credentials(db_session: Session) -> None:
                 )
         finally:
             try:
-                # Commit before unlocking so the next sync reads the new session
                 db_session.commit()
             finally:
                 sync_lock.release()
@@ -472,7 +465,4 @@ def confirm_two_factor(
         except Exception:
             _persist_session_state_of_failed_sync(db_session=db_session, credential=credential)
             raise
-        if result.status == SyncStatus.COMPLETED and handler.SUPPORTS_UNATTENDED_SYNC:
-            logger.info(f"{credential} can sync unattended again after the confirmed login")
-            credential.requires_two_factor_authentication = False
         return _finalize_sync(db_session=db_session, credential=credential, snapshot=snapshot, result=result)

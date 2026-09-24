@@ -114,8 +114,6 @@ class BankHandler(ABC):
     CREDENTIAL_FIELDS: tuple[str, ...]
     FIELD_RULES: dict[str, tuple[FieldRule, ...]] = {}
     WHITESPACE_STRIPPED_FIELDS: frozenset[str] = frozenset()
-    # True if a confirmed login keeps working without the user present
-    SUPPORTS_UNATTENDED_SYNC: bool = False
 
     session_state: dict | None = None
 

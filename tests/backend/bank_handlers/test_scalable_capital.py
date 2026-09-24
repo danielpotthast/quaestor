@@ -826,7 +826,6 @@ def test_session_stores_the_refreshed_state_even_when_the_sync_fails(monkeypatch
             config_dirs.append(session._config_dir)
             raise RuntimeError("rate-limited after the refresh token was rotated")
 
-    # The old refresh token is invalid once rotated
     assert handler.session_state == {"archive": SECOND_SESSION_ARCHIVE}
     assert not config_dirs[0].exists()
 
@@ -848,10 +847,6 @@ def test_session_keeps_the_previous_state_when_it_cannot_be_read_back(
 
     assert handler.session_state == {"archive": SESSION_ARCHIVE}
     assert_log_contains(caplog, message="Could not read back the rotated session state")
-
-
-def test_handler_supports_unattended_sync():
-    assert ScalableCapitalHandler.SUPPORTS_UNATTENDED_SYNC is True
 
 
 def test_session_with_an_unusable_session_state_requires_reauthentication(monkeypatch: pytest.MonkeyPatch):
